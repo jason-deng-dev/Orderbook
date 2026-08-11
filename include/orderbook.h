@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+class Trader;
+
 struct Order {
   int trader_id;
   int quantity;
@@ -46,8 +48,10 @@ private:
   bool handleFill();
 
 public:
-  void addBuy(int price, int quantity);
-  void addSell(int price, int quantity);
+  bool buy(Trader* trader, int quantity, int price);
+  bool sell(Trader* trader, int quantity, int price);
+  void cancelBuy(Trader* trader, int quantity, int price);
+  void cancelSell(Trader* trader, int quantity, int price);
 };
 
 #endif

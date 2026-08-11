@@ -3,7 +3,8 @@
 
 #include <string>
 #include <string_view>
-#include "orderbook.h"
+
+class Orderbook;
 
 class Trader {
 

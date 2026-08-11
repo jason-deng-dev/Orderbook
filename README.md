@@ -17,10 +17,7 @@ Orderbook
 # Interface
 
 ## Trader
-Trader.buy(Orderbook*, quantity, price)
-Trader.sell(Orderbook*, quantity, price)
-Trader.cancelBuy(Orderbook*, quantity, price)
-Trader.cancelSell(Orderbook*, quantity, price)
+Trader(name, balance)
 
 ## BuyOrders
 BuyOrders.add(trader_id, quantity, price)
@@ -30,4 +27,9 @@ BuyOrders.cancel(trader_id, quantity, price)
 SellOrders.add(trader_id, quantity, price)
 SellOrders.cancel(trader_id, quantity, price)
 
+## Orderbook
+Orderbook.buy(Trader*, quanity, price)
+Orderbook.sell(Trader*, quantity, price)
+Orderbook.cancelBuy(Trader*, quanity, price)
+Orderbook.cancelSell(Trader*, quantity, price)
 

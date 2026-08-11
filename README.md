@@ -6,6 +6,7 @@ traders
 - hold buy and sell orders
 - able to see total outcoming/incoming order costs etc
 - has unique ID's
+- should be able to see all orders for different stocks
 
 Orderbook
 - for a particular stock

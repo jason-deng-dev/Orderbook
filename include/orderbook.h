@@ -44,14 +44,22 @@ private:
   SellOrders sellOrders_;
   // checks if order can be filled (true if can, false if not)
   // if can be filled, fill order
-  // when fill order add to order history
+  // when order filled add to order history
   bool handleFill();
 
 public:
+  // if succeed add the Orderbook* to trader, and add information on quantity/price
+  // update trader balance
+  // update buyOrders
   bool buy(Trader* trader, int quantity, int price);
+
+  // if succeed update information on qunatity/price
+  // update trader balance
+  // update sellOrders
   bool sell(Trader* trader, int quantity, int price);
-  void cancelBuy(Trader* trader, int quantity, int price);
-  void cancelSell(Trader* trader, int quantity, int price);
+
+  bool cancelBuy(Trader* trader, int quantity, int price);
+  bool cancelSell(Trader* trader, int quantity, int price);
 };
 
 #endif

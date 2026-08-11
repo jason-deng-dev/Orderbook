@@ -37,14 +37,24 @@ Robustines to bad clients
 
 
 # Order fill logic
+
+## problem 1
 Buy
-- A, 30, 500
-- B, 29, 200
+- 30, 500
+- 29, 200
 
 Sell
-- C, 31, 100
-- D, 32, 50
+- 31, 100
+- 32, 50
 
 if Sell 29, 500 comes in
 - give order fill to aggressive order
 - encouraging people to send their most aggressive price, incase book is changing at that time
+
+## problem 2
+Buy
+- 25, 500
+
+person A orders first at 25, 250
+person B orders after at 25, 250
+- given the exact same price, order that arrived first is first in line

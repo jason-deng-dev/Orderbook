@@ -1,0 +1,15 @@
+- [ ] rework data structure of BuyOrders/SellOrders
+- [ ] rework OrdersAtPrice
+  - [ ] globally monotonically increasing unique order id
+  - [ ] rework to use map<order_id, Order*>
+- [ ] creating orderbook workflow
+- [ ] creating trader workflow
+  - [ ] adding balance
+  - [ ] withdraw balance
+- [ ] buying stock workflow
+- [ ] selling stock workflow
+- [ ] cancel buy stock workflow
+- [ ] cancel sell stock workflow
+- [ ] display buy/sell 
+  - [ ] show buyers/sellers count
+  - [ ] show quantity/price

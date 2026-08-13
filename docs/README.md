@@ -60,7 +60,7 @@ Idea:
 - assign each order an unique id, inside OrdersAtPrice
 - store orders as map
 - unique id globally monotonic (based on arrival order, across all price level)
-map<order_id, Order>
+map<order_id, Order*>
 
 so that can access oldest order with begin() O(1)
 and then alter orders with look up O(log n)

@@ -1,4 +1,4 @@
-- [ ] rework data structure of BuyOrders/SellOrders
+- [x] rework data structure of BuyOrders/SellOrders
 - [ ] rework OrdersAtPrice
   - [ ] globally monotonically increasing unique order id
   - [ ] rework to use map<order_id, Order*>

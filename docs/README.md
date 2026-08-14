@@ -40,7 +40,7 @@ currently BuyOrders/Sellorders implemented data structure is minHeap/maxHeap, to
 - also to allow changing values when users add/cancel buyOrders/sellOrders
 
 Idea:
-map<price, <OrdersAtPrice>>
+map<price, OrdersAtPrice>
 - begin() = minOrder O(1)
 - rbegin() = maxOrder O(1)
 - lookup O(log n)

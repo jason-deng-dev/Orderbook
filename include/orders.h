@@ -4,36 +4,39 @@
 #include <functional>
 #include <queue>
 #include <unordered_map>
+#include <map>
 #include <utility>
 #include <vector>
 
 struct Order {
+  static int currId = 0;
+  
+
+
   int trader_id;
   int quantity;
 };
 
 struct OrdersAtPrice {
-  int total_quantity;
+  int total_quantity = 0;
+  int total_orders = 0;
   std::queue<Order> order_queue;
 };
 
 class BuyOrders {
 private:
   // <price, orders>
-  std::priority_queue<std::pair<int, OrdersAtPrice>> max_buy_prices_;
+  std::map<int, OrdersAtPrice*> buyOrders;
 
 public:
-  const int getBuyPrice() const { return max_buy_prices_.top().first; }
+  const int getBestBid() const { return buyOrders.rbegin()->first; }
 };
 class SellOrders {
 private:
-  std::priority_queue<std::pair<int, OrdersAtPrice>,
-                      std::vector<std::pair<int, OrdersAtPrice>>,
-                      std::greater<std::pair<int, OrdersAtPrice>>>
-      min_sell_prices_;
+  std::map<int, OrdersAtPrice*> sellOrders;
 
 public:
-  const int getSellPrice() const { return min_sell_prices_.top().first; }
+  const int getBestAsk() const { return sellOrders.begin()->first; }
 };
 
 #endif

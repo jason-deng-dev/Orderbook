@@ -1,7 +1,7 @@
 - [x] rework data structure of BuyOrders/SellOrders
-- [ ] rework OrdersAtPrice
-  - [ ] globally monotonically increasing unique order id
-  - [ ] rework to use map<order_id, Order*>
+- [x] rework OrdersAtPrice
+  - [x] globally monotonically increasing unique order id
+  - [x] rework to use map<order_id, Order*>
 - [ ] creating orderbook workflow
 - [ ] creating trader workflow
   - [ ] adding balance

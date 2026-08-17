@@ -11,9 +11,16 @@ Orderbook
   - track time of orders etc
 - need to maintain for a given price who put order down first
 
-# Interface
+# Classes
 
 ## Trader
+- static next_id (to help set incrementing id on each new Trader)
+- id
+- name
+- balance
+- buyOrders<Orderbook* , <price, <trade_ids>>>
+- sellOrders<Orderbook* , <price, <trade_ids>>>
+
 Trader(name, balance)
 
 ## BuyOrders

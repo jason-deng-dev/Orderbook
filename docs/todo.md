@@ -5,6 +5,7 @@
 - [x] Trader sync
   - [x] <Orderbook*, vector<Order*>> buyOrders/sellOrders
   - [x] add price value to Order
+- [ ] refactor to remove BuyOrders/SellOrders
 - [ ] creating orderbook workflow
   - [ ] BuyOrders.add(trader*, quantity, price)
   - [ ] BuyOrders.cancel(trader*, quantity, price)

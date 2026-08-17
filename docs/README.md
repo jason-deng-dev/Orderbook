@@ -108,8 +108,38 @@ add price value to Order
   - OrdersAtPrice->order_queue.erase(trade_id)
 
 
+## Simplify class structure
+Current:
 
+Order 
 
+OrdersAtPrice{
+  map<trade_id, Order*>
+}
 
+Buy/SellOrders {
+  
+}
+
+Orderbook{
+  BuyOrders
+  SellOrders
+}
+
+Idea:
+- remove BuyOrders/SellOrders since they contain only a map
+- just keep map<price, OrdersAtPrice*> in Orderbook
+- have functions manipulate them as needed
+
+Order 
+
+OrdersAtPrice{
+  map<trade_id, Order*>
+}
+
+Orderbook{
+  map<price, OrdersAtPrice*> buyOrders
+  map<price, OrdersAtPrice*> sellOrders
+}
 
 

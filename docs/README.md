@@ -22,6 +22,11 @@ Orderbook
 - sellOrders<Orderbook* , <price, <trade_ids>>>
 
 Trader(name, balance)
+addBuyOrder(Orderbook*, price, trade_id)
+cancelBuyOrder(Orderbook*, price, trade_id)
+addSellOrder(Orderbook*, price, trade_id)
+cancelSellOrder(Orderbook*, price, trade_id)
+
 
 ## BuyOrders
 BuyOrders.add(trader_id, quantity, price)
@@ -72,6 +77,38 @@ map<order_id, Order*>
 so that can access oldest order with begin() O(1)
 and then alter orders with look up O(log n)
 to erase orders, if filled or canceled O(log n)
+
+## trader keeping track of trades, and Orderbook keeping track of trades, two sources of truth (sync bugs)
+Currently in Trader
+<Orderbook*, <price, <trade_ids>>>
+std::unordered_map<Orderbook*, std::map<int, std::vector<int>>> buyOrders;
+std::unordered_map<Orderbook*, std::map<int, std::vector<int>>> sellOrders;
+
+in BuyOrders/SellOrders
+// <price, orders>
+std::map<int, OrdersAtPrice *> buyOrderMap
+
+in OrdersAtPrice
+// <trade_id_, Order*>
+std::map<int, Order *> order_queue;
+
+need to allow trader access to all their buy orders/sell orders
+- so that can display and cancel orders
+
+Idea 1:
+
+Trader
+<Orderbook*, vector<Order*>>
+add price value to Order
+
+- so that have access to all Orders in a Orderbook as objects and can display data as needed
+- and can change the order amount easily
+- if want to cancel order completely
+  - Orderbook->BuyOrders->buyOrderMap[price]
+  - OrdersAtPrice->order_queue.erase(trade_id)
+
+
+
 
 
 

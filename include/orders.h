@@ -8,35 +8,44 @@
 #include <utility>
 #include <vector>
 
+class Trader;
+
 struct Order {
   static int currId;
-  int trader_id_;
+  int price_;
+  int trade_id_;
   int quantity_;
-
-  Order(int quantity) : quantity_(quantity) { trader_id_ = currId++; }
+  int trader_id_;
+  Order(int quantity, int trader_id, int price)
+      : price_(price), quantity_(quantity), trader_id_(trader_id) {
+    trade_id_ = currId++;
+  }
 };
 
 struct OrdersAtPrice {
   int total_quantity = 0;
   int total_orders = 0;
-  // <Order::trader_id_, Order*>
-  std::map<int, Order*>order_queue;
+  // <Order::trade_id_, Order*>
+  std::map<int, Order *> order_queue;
 };
 
 class BuyOrders {
 private:
   // <price, orders>
-  std::map<int, OrdersAtPrice *> buyOrders;
+  std::map<int, OrdersAtPrice *> buyOrderMap;
 
 public:
-  const int getBestBid() const { return buyOrders.rbegin()->first; }
+  bool add(Trader *trader, int quantity, int price);
+  bool cancel(Trader *trader, int quanity, int price);
+
+  const int getBestBid() const { return buyOrderMap.rbegin()->first; }
 };
 class SellOrders {
 private:
-  std::map<int, OrdersAtPrice *> sellOrders;
+  std::map<int, OrdersAtPrice *> sellOrderMap;
 
 public:
-  const int getBestAsk() const { return sellOrders.begin()->first; }
+  const int getBestAsk() const { return sellOrderMap.begin()->first; }
 };
 
 #endif

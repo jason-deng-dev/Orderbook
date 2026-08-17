@@ -3,8 +3,12 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <map>
+#include <vector>
 
 class Orderbook;
+class Order;
 
 class Trader {
 
@@ -13,6 +17,9 @@ private:
   int id_;
   std::string name_;
   int balance_;
+  // <Orderbook*, vector<Order*>>
+  std::unordered_map<Orderbook*, std::vector<Order*>> buyOrders;
+  std::unordered_map<Orderbook*, std::vector<Order*>> sellOrders;
 
 public:
   Trader(const std::string &name, double balance = 0.0)
@@ -21,6 +28,8 @@ public:
   int getId() const { return id_; }
   int getBalance() const {return balance_;}
   std::string_view getName() const {return name_;}
+  
+  
 };
 
 #endif

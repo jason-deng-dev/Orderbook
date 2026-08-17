@@ -2,7 +2,16 @@
 - [x] rework OrdersAtPrice
   - [x] globally monotonically increasing unique order id
   - [x] rework to use map<order_id, Order*>
+- [x] Trader sync
+  - [x] <Orderbook*, vector<Order*>> buyOrders/sellOrders
+  - [x] add price value to Order
 - [ ] creating orderbook workflow
+  - [ ] BuyOrders.add(trader*, quantity, price)
+  - [ ] BuyOrders.cancel(trader*, quantity, price)
+  - [ ] SellOrders.add(trader*, quantity, price)
+  - [ ] SellOrders.cancel(trader*, quantity, price)
+- [ ] Ensure memory leak safety
+  - [ ] ensure RAII (resource acquisition is intialization)
 - [ ] creating trader workflow
   - [ ] adding balance
   - [ ] withdraw balance

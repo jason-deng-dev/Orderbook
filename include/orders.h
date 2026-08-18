@@ -24,28 +24,8 @@ struct Order {
 
 struct OrdersAtPrice {
   int total_quantity = 0;
-  int total_orders = 0;
   // <Order::trade_id_, Order*>
-  std::map<int, Order *> order_queue;
-};
-
-class BuyOrders {
-private:
-  // <price, orders>
-  std::map<int, OrdersAtPrice *> buyOrderMap;
-
-public:
-  bool add(Trader *trader, int quantity, int price);
-  bool cancel(Trader *trader, int quanity, int price);
-
-  const int getBestBid() const { return buyOrderMap.rbegin()->first; }
-};
-class SellOrders {
-private:
-  std::map<int, OrdersAtPrice *> sellOrderMap;
-
-public:
-  const int getBestAsk() const { return sellOrderMap.begin()->first; }
+  std::map<int, Order> order_queue;
 };
 
 #endif

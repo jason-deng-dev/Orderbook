@@ -7,6 +7,7 @@
   - [x] add price value to Order
 - [x] refactor to remove BuyOrders/SellOrders
 - [x] refactor to move id generation from Order to Orderbook
+- [x] refactor interface for cancelBuy/Sell
 - [ ] creating orderbook workflow
   - [ ] BuyOrders.add(trader*, quantity, price)
   - [ ] BuyOrders.cancel(trader*, quantity, price)

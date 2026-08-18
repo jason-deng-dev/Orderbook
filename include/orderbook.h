@@ -32,8 +32,8 @@ public:
   // update sellOrders
   bool sell(Trader *trader, int quantity, int price);
 
-  bool cancelBuy(Trader *trader, int quantity, int price);
-  bool cancelSell(Trader *trader, int quantity, int price);
+  bool cancelBuy(Trader *trader, int trade_id, int quantity);
+  bool cancelSell(Trader *trader, int trade_id, int quantity);
   int getBestBid() const { return buyOrderMap.rbegin()->first; }
   int getBestAsk() const { return sellOrderMap.begin()->first; }
 };

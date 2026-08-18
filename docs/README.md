@@ -160,3 +160,20 @@ currently can only know current id when Order object is created, which is not co
 
 Idea:
 refactor to have the incrementing currId be stored in Orderbook, and use that when creating Orders to assign id.
+
+## Cancelation behavior
+Current:
+bool Orderbook::cancelBuy(Trader *trader, int quantity, int price)
+
+Idea:
+cancel should be full removal of one order, by order id
+
+bool Orderbook::cancelBuy(Trade *trader, int trade_id)
+
+separetely should also have a modifyOrder that allows reducing quanitity while keeping priority
+
+reduceOrder(Trade* trader, int trade_id, int amount)
+
+Instead can just combine cancel/reduceOrder so that if cancel full amount of quantity, it removes the trade, but if partial reduction it just changes quantity without effecting time priority
+
+cancelBuy(Trade *trader, int trade_id, int quantity)

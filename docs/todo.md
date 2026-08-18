@@ -5,7 +5,8 @@
 - [x] Trader sync
   - [x] <Orderbook*, vector<Order*>> buyOrders/sellOrders
   - [x] add price value to Order
-- [ ] refactor to remove BuyOrders/SellOrders
+- [x] refactor to remove BuyOrders/SellOrders
+- [x] refactor to move id generation from Order to Orderbook
 - [ ] creating orderbook workflow
   - [ ] BuyOrders.add(trader*, quantity, price)
   - [ ] BuyOrders.cancel(trader*, quantity, price)
@@ -14,6 +15,8 @@
 - [ ] Ensure memory leak safety
   - [ ] ensure RAII (resource acquisition is intialization)
 - [ ] creating trader workflow
+  - [ ] add to buy/sellOrders function
+  - [ ] edit buy/sellOrders function
   - [ ] adding balance
   - [ ] withdraw balance
 - [ ] buying stock workflow

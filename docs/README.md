@@ -142,4 +142,21 @@ Orderbook{
   map<price, OrdersAtPrice*> sellOrders
 }
 
+## Id generation tied to creation of Order
+Current:
+struct Order {
+  static int currId;
+  int price_;
+  int trade_id_;
+  int quantity_;
+  int trader_id_;
+  Order(int quantity, int trader_id, int price)
+      : price_(price), quantity_(quantity), trader_id_(trader_id) {
+    trade_id_ = currId++;
+  }
+};
 
+currently can only know current id when Order object is created, which is not convienent for storing in map as we are creating the object
+
+Idea:
+refactor to have the incrementing currId be stored in Orderbook, and use that when creating Orders to assign id.

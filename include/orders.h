@@ -11,15 +11,13 @@
 class Trader;
 
 struct Order {
-  static int currId;
   int price_;
   int trade_id_;
   int quantity_;
   int trader_id_;
-  Order(int quantity, int trader_id, int price)
-      : price_(price), quantity_(quantity), trader_id_(trader_id) {
-    trade_id_ = currId++;
-  }
+  Order(int trade_id, int quantity, int trader_id, int price)
+      : trade_id_(trade_id), price_(price), quantity_(quantity),
+        trader_id_(trader_id) {}
 };
 
 struct OrdersAtPrice {

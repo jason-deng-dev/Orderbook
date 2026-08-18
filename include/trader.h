@@ -20,6 +20,7 @@ private:
   // <Orderbook*, vector<Order*>>
   std::unordered_map<Orderbook*, std::vector<Order*>> buyOrders;
   std::unordered_map<Orderbook*, std::vector<Order*>> sellOrders;
+  std::unordered_map<Orderbook*, int> position;
 
 public:
   Trader(const std::string &name, double balance = 0.0)

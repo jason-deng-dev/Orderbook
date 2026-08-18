@@ -8,18 +8,15 @@
 - [x] refactor to remove BuyOrders/SellOrders
 - [x] refactor to move id generation from Order to Orderbook
 - [x] refactor interface for cancelBuy/Sell
-- [ ] creating orderbook workflow
-  - [ ] BuyOrders.add(trader*, quantity, price)
-  - [ ] BuyOrders.cancel(trader*, quantity, price)
-  - [ ] SellOrders.add(trader*, quantity, price)
-  - [ ] SellOrders.cancel(trader*, quantity, price)
-- [ ] Ensure memory leak safety
-  - [ ] ensure RAII (resource acquisition is intialization)
+- [x] creating inventory logic
+- [ ] creating orderbook logic
 - [ ] creating trader workflow
   - [ ] add to buy/sellOrders function
   - [ ] edit buy/sellOrders function
   - [ ] adding balance
   - [ ] withdraw balance
+- [ ] Ensure memory leak safety
+  - [ ] ensure RAII (resource acquisition is intialization)
 - [ ] buying stock workflow
 - [ ] selling stock workflow
 - [ ] cancel buy stock workflow

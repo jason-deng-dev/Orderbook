@@ -1,6 +1,7 @@
 #ifndef ORDERS_H
 #define ORDERS_H
 
+#include <chrono>
 #include <functional>
 #include <map>
 #include <queue>
@@ -11,14 +12,14 @@
 class Trader;
 
 struct Order {
-  
+  std::chrono::system_clock::time_point ts;
   int trade_id_;
   int quantity_;
   int trader_id_;
   int price_;
   Order(int trade_id, int quantity, int trader_id, int price)
-      : trade_id_(trade_id), quantity_(quantity), trader_id_(trader_id),
-        price_(price) {}
+      : ts(std::chrono::system_clock::now()), trade_id_(trade_id),
+        quantity_(quantity), trader_id_(trader_id), price_(price) {}
 };
 
 struct OrdersAtPrice {

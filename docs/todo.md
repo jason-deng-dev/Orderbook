@@ -14,6 +14,11 @@
   - [x] cancelBuy
   - [x] sell
   - [x] cancelSell
+- [ ] add timestamp tracking for orders
+- [ ] display
+  - [x] displayBuyOrders
+  - [x] displaySellOrders
+  - [ ] displayOrderbook
 - [ ] creating trader workflow
   - [ ] add to buy/sellOrders function
   - [ ] edit buy/sellOrders function

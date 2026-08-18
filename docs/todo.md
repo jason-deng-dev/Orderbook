@@ -10,6 +10,10 @@
 - [x] refactor interface for cancelBuy/Sell
 - [x] creating inventory logic
 - [ ] creating orderbook logic
+  - [x] buy
+  - [ ] cancelBuy
+  - [ ] sell
+  - [ ] cancelSell
 - [ ] creating trader workflow
   - [ ] add to buy/sellOrders function
   - [ ] edit buy/sellOrders function

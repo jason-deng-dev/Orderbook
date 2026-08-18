@@ -1,9 +1,13 @@
 #include "../include/orderbook.h"
 #include "../include/trader.h"
+#include <iostream>
 
 bool Orderbook::buy(Trader *trader, int quantity, int price) {
-  if (trader->getBalance() < quantity * price)
+  if (trader->getBalance() < quantity * price) {
+    std::cerr << "buy failed, insufficent funds\n";
     return false;
+  }
+
   buyOrderMap[price].total_quantity += quantity;
   int trade_id = currTradeId++;
   // emplace returns <iterator to inserted element, bool inserted>
@@ -13,8 +17,29 @@ bool Orderbook::buy(Trader *trader, int quantity, int price) {
   return true;
 }
 
-bool Orderbook::cancelBuy(Trader *trader, int trade_id, int quantity) {}
+// can partially cancel amount
+// can fully cancel order if quantity left blank
+bool Orderbook::cancelBuy(Order *order, int quantity = 0) {
+  int trade_id = order->trade_id_;
+  int price = order->price_;
+
+  // fail if order doesn't exist in buyOrderMap;
+  if (!buyOrderMap.count(price) ||
+      !buyOrderMap[price].order_queue.count(trade_id)) {
+    std::cerr << "buy cancelation failed, order may not exist\n";
+    return false;
+  }
+
+  if (quantity == 0) {
+    buyOrderMap[price].total_quantity -= order->quantity_;
+    buyOrderMap[price].order_queue.erase(trade_id);
+  } else {
+    buyOrderMap[price].total_quantity -= quantity;
+    order->quantity_ -= quantity;
+  }
+  return true;
+}
 
 bool Orderbook::sell(Trader *trader, int quantity, int price) {}
 
-bool Orderbook::cancelSell(Trader *trader, int trade_id, int quantity) {}
+bool Orderbook::cancelSell(Order *order, int quantity = 0) {}

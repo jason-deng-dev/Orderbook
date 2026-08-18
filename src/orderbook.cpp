@@ -74,3 +74,24 @@ bool Orderbook::cancelSell(Order *order, int quantity = 0) {
   }
   return true;
 }
+
+void Orderbook::displayBuyOrders() const {
+  std::cout <<"Buy Orders: \n";
+  for (auto it = buyOrderMap.rbegin(); it != buyOrderMap.rend(); ++it) {
+    int price = it->first;
+    auto &orders = it->second;
+    std::cout << "Buyers:" << orders.order_queue.size()
+              << " Volume:" << orders.total_quantity << " Buy:" << price
+              << '\n';
+  }
+  std::cout <<'\n';
+}
+
+void Orderbook::displaySellOrders() const {
+  std::cout <<"Sell Orders: \n";
+  for (const auto &[price, orders] : sellOrderMap)
+    std::cout << "Sellers:" << orders.order_queue.size()
+              << " Volume:" << orders.total_quantity << " Sell:" << price
+              << '\n';
+  std::cout <<'\n';
+}

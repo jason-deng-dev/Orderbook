@@ -28,6 +28,13 @@ public:
   int getId() const { return id_; }
   int getBalance() const {return balance_;}
   std::string_view getName() const {return name_;}
+
+  void addBuyOrder(Orderbook* orderbook, Order* order) {
+    buyOrders[orderbook].push_back(order);
+  }
+  void addSellOrder(Orderbook* orderbook, Order* order) {
+    sellOrders[orderbook].push_back(order);
+  }
   
   
 };

@@ -54,4 +54,23 @@ bool Orderbook::sell(Trader *trader, int quantity, int price) {
   return true;
 }
 
-bool Orderbook::cancelSell(Order *order, int quantity = 0) {}
+bool Orderbook::cancelSell(Order *order, int quantity = 0) {
+  int trade_id = order->trade_id_;
+  int price = order->price_;
+
+  // fail if order doesn't exist in buyOrderMap;
+  if (!sellOrderMap.count(price) ||
+      !sellOrderMap[price].order_queue.count(trade_id)) {
+    std::cerr << "sell cancelation failed, order may not exist\n";
+    return false;
+  }
+
+  if (quantity == 0) {
+    sellOrderMap[price].total_quantity -= order->quantity_;
+    sellOrderMap[price].order_queue.erase(trade_id);
+  } else {
+    sellOrderMap[price].total_quantity -= quantity;
+    order->quantity_ -= quantity;
+  }
+  return true;
+}

@@ -9,11 +9,11 @@
 - [x] refactor to move id generation from Order to Orderbook
 - [x] refactor interface for cancelBuy/Sell
 - [x] creating inventory logic
-- [ ] creating orderbook logic
+- [x] creating orderbook logic
   - [x] buy
-  - [ ] cancelBuy
-  - [ ] sell
-  - [ ] cancelSell
+  - [x] cancelBuy
+  - [x] sell
+  - [x] cancelSell
 - [ ] creating trader workflow
   - [ ] add to buy/sellOrders function
   - [ ] edit buy/sellOrders function

@@ -23,7 +23,7 @@ private:
   std::unordered_map<Orderbook*, int> inventory;
 
 public:
-  Trader(const std::string &name, double balance = 0.0)
+  Trader(const std::string &name, int balance = 0.0)
       : id_(next_id_++), name_(name), balance_(balance) {}
 
   int getId() const { return id_; }

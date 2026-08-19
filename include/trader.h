@@ -1,12 +1,12 @@
 #ifndef TRADER_H
 #define TRADER_H
 
+#include "orders.h"
 #include <map>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include "orders.h"
 
 class Orderbook;
 class Order;
@@ -42,6 +42,10 @@ public:
   }
   void addSellOrder(Orderbook *orderbook, Order *order) {
     sellOrders[orderbook][order->price_].push_back(order->trade_id_);
+  }
+
+  void addStock(Orderbook *orderbook, int amount){
+    inventory[orderbook] += amount;
   }
 };
 

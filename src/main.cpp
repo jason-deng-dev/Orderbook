@@ -20,5 +20,12 @@ int main() {
   ob1.buy(&t2, 5, 10);
   
   ob1.displayBuyOrders();
+
+  t1.addStock(&ob1, 20);
+  ob1.displaySellOrders();
+  ob1.sell(&t1, 20, 50);
+  ob1.displaySellOrders();
+
+
   return 0;
 }

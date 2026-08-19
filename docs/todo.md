@@ -16,6 +16,13 @@
   - [x] cancelSell
 - [x] add timestamp tracking for orders
 - [ ] Rework Trader::buyOrder/sellOrder
+  - [ ] remove buyOrder/sellOrder from trader.h, including any references to it
+  - [ ] add unordered_map<int, std::map<int, Order::iterator>> order_index to Orderbook
+  - [ ] add unordered_map<trader_id, vector<trade_id>> buy/sell_trader_index
+  - [ ] add Trader::unordered_set<Orderbook*> 
+  - [ ] addOrder() implementation
+  - [ ] removeOrder() implementation
+  - [ ] have buy/sell/cancel/fill all call addOrder()/removeOrder()
 - [ ] display
   - [x] displayBuyOrders
   - [x] displaySellOrders

@@ -177,3 +177,82 @@ reduceOrder(Trade* trader, int trade_id, int amount)
 Instead can just combine cancel/reduceOrder so that if cancel full amount of quantity, it removes the trade, but if partial reduction it just changes quantity without effecting time priority
 
 cancelBuy(Trade *trader, int trade_id, int quantity)
+
+## Rework Trader::buyOrder/sellOrders
+
+Current
+<Orderbook*, vector<Order*>> buy/sellOrders
+
+Issue:
+- difficult to remove/edit a given order for a trader
+- want to make it so can cancel/edit order with price/quantity
+
+Idea 1
+<Orderbook*, unordered_map<price, deque<Order*>>> buy/sellOrders
+
+- so that for a given orderbook trader can select the price of the order they want to change
+- deque allows iteration, both end push and pop
+- so that we can easily edit the earliest order or latest order at a given price
+
+Issue:
+- two sources of truth
+  - Orderbook already stores every order
+  - now trader keeps pointer to it
+  - every buy/sell/cancel must now update both (easy to have sync issues)
+- dangling pointers
+  - Orderbook owns Order objects
+  - Trader's dequeu holds Order* into orderbook's maps
+  - Orderbook erases order on fill/cancel
+    - trader's pointer is left dangling => UB next read
+
+Idea 2
+unordered_map<trader_id, vector<trade_id>> traderIndex (Inside Orderbook)
+unordered_set<Orderbook*> (Inside Trader)
+
+- No trader-side order storage
+- Derive Orderbook specific buy/sellOrders by feeding trader id
+- Orderbook becomes single source of truth
+- set of Orderbook* inside trader to maintain which orderbooks they hold positions in
+
+Issue:
+- traderIndex is a cache
+  - sync bugs may still persist since every buy/sell/cancel/fill has to now write to traderIndex and buyOrders/sellOrders 
+  - if miss one erase, trader will see ghost order
+- vector<trade_id> lacks price (useless if want to display/cancel order)
+  - with trade_id alone we would have to scan the whole book per query
+
+Idea 3
+Orderbook::getBuyOrders(trader_id)
+- this scans buyOrderMap, filtering by trader_id
+- to produce all the orders
+- no sync risk
+- Cost: O(book size)
+
+Issue:
+- at scale this approach causes operatin to drastically slows down 
+
+Idea 4
+unordered_map<int, std::map<int,Order>::iterator> order_index
+- gives O(1) cancel by id 
+
+cancelBuy(trader_id, trade_id) {
+  it = order_index[trade_id]
+  erase from buyOrderMap[price]
+  update total quantity
+  erase from trader index
+}
+
+unordered_map<trader_id, vector<trade_id>> buy_trader_index
+unordered_map<trader_id, vector<trade_id>> sell_trader_index
+
+Trader::unordered_set<Orderbook*> 
+- to keep track of Orderbooks that a trader has posiiton in
+
+To solve sync problem
+- one-write-path
+addOrder()
+removeOrder()
+- so that we have one place that creates order, update price_queue + order_index
+- one place to erase from all three
+- this is called buy buy/sell/cancel/fill, so that index can't drift
+

@@ -17,6 +17,7 @@ int main() {
 
   Trader t2 ("Kam", 200);
   ob1.buy(&t2, 5, 2);
+  ob1.buy(&t2, 5, 10);
   
   ob1.displayBuyOrders();
   return 0;

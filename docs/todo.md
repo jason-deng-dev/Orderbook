@@ -14,7 +14,8 @@
   - [x] cancelBuy
   - [x] sell
   - [x] cancelSell
-- [ ] add timestamp tracking for orders
+- [x] add timestamp tracking for orders
+- [ ] Rework Trader::buyOrder/sellOrder
 - [ ] display
   - [x] displayBuyOrders
   - [x] displaySellOrders

@@ -15,6 +15,7 @@ class Trader;
 class Orderbook {
 private:
   int currTradeId{0};
+  // <price, OrdersAtPrice>
   std::map<int, OrdersAtPrice> buyOrderMap;
   std::map<int, OrdersAtPrice> sellOrderMap;
 

@@ -232,7 +232,7 @@ Issue:
 - at scale this approach causes operatin to drastically slows down 
 
 Idea 4
-unordered_map<int, std::map<int,Order>::iterator> order_index
+unordered_map<order_id, std::map<int,Order>::iterator> order_index
 - gives O(1) cancel by id 
 
 cancelBuy(trader_id, trade_id) {
@@ -256,3 +256,17 @@ removeOrder()
 - one place to erase from all three
 - this is called buy buy/sell/cancel/fill, so that index can't drift
 
+Issue:
+- too much added complexity
+
+Idea 5
+Trader:
+  unordered_map<Orderbook*, map<price, vector<trade_id>>> buyOrders
+  unordered_map<Orderbook*, map<price, vector<trade_id>>> sellOrders
+
+- store ids, not pointers
+- no dangling pointers
+- by storing price, can query Orderbook to get instead display
+
+cancelBuy(trader_id, trade_id, price)
+- book finds via buyOrderMap[price].order_queue O(log n)

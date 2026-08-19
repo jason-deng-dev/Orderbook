@@ -6,6 +6,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include "orders.h"
 
 class Orderbook;
 class Order;
@@ -17,9 +18,9 @@ private:
   int id_;
   std::string name_;
   int balance_;
-  // <Orderbook*, vector<Order*>>
-  std::unordered_map<Orderbook *, std::vector<Order *>> buyOrders;
-  std::unordered_map<Orderbook *, std::vector<Order *>> sellOrders;
+  // unordered_map<Orderbook*, map<price, vector<trade_id>>>
+  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> buyOrders;
+  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> sellOrders;
   std::unordered_map<Orderbook *, int> inventory;
 
 public:
@@ -37,10 +38,10 @@ public:
   }
 
   void addBuyOrder(Orderbook *orderbook, Order *order) {
-    buyOrders[orderbook].push_back(order);
+    buyOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
   void addSellOrder(Orderbook *orderbook, Order *order) {
-    sellOrders[orderbook].push_back(order);
+    sellOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
 };
 

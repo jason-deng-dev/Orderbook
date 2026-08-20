@@ -28,4 +28,15 @@ struct OrdersAtPrice {
   std::map<int, Order> order_queue;
 };
 
+struct Trade {
+  std::chrono::system_clock::time_point time_of_fill_;
+  int buyer_id_;
+  int seller_id_;
+  int fill_price_;
+  int fill_qty_;
+  Trade(int buyer_id, int seller_id, int fill_price, int fill_qty)
+      : time_of_fill_(std::chrono::system_clock::now()), buyer_id_(buyer_id),
+        seller_id_(seller_id), fill_price_(fill_price), fill_qty_(fill_qty) {}
+};
+
 #endif

@@ -22,6 +22,7 @@ private:
   // <price, OrdersAtPrice>
   std::map<int, OrdersAtPrice> buyOrderMap;
   std::map<int, OrdersAtPrice> sellOrderMap;
+  std::unordered_map<int, Trader*> traderRegistry;
 
   // checks if order can be filled (true if can, false if not)
   // if can be filled, fill order

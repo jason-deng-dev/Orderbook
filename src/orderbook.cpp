@@ -11,6 +11,8 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
     return false;
   }
 
+  traderRegistry[trader->getId()] = trader;
+
   buyOrderMap[price].total_quantity += quantity;
   int trade_id = currTradeId++;
   // emplace returns <iterator to inserted element, bool inserted>
@@ -26,6 +28,9 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
     std::cerr << "sell failed, insufficent holding of stock \n";
     return false;
   }
+
+  traderRegistry[trader->getId()] = trader;
+
   trader->changeInventoryAmount(this, -quantity);
   sellOrderMap[price].total_quantity += quantity;
   int trade_id = currTradeId++;
@@ -248,31 +253,42 @@ Order *Orderbook::getBestAsk() {
 // invariant is this only called by Orderbook::handleFill when there is a
 // bid/ask
 void Orderbook::removeBestBid() {
-  auto & oq = buyOrderMap[getBestBidPrice()].order_queue;
+  auto &oq = buyOrderMap[getBestBidPrice()].order_queue;
   oq.erase(oq.begin());
 };
 void Orderbook::removeBestAsk() {
-  auto & oq = sellOrderMap[getBestAskPrice()].order_queue;
+  auto &oq = sellOrderMap[getBestAskPrice()].order_queue;
   oq.erase(oq.begin());
 };
 
 bool Orderbook::handleFill() {
   bool buyEmpty = buyOrderMap.empty();
   bool sellEmpty = sellOrderMap.empty();
-  if (buyEmpty || sellEmpty || getBestBidPrice() < getBestAskPrice())
+
+  int bestBidPrice = getBestBidPrice();
+  int bestAskPrice = getBestAskPrice();
+
+  if (buyEmpty || sellEmpty || bestBidPrice < bestAskPrice)
     return false;
-  while (!buyEmpty && !sellEmpty && getBestBidPrice() >= getBestAskPrice()) {
-    // bid = ask
-    if (getBestBidPrice() == getBestAskPrice()) {
-      // getBestBid
-      // getBestAsk
+
+  while (!buyEmpty && !sellEmpty) {
+    bestBidPrice = getBestBidPrice();
+    bestAskPrice = getBestAskPrice();
+
+    if (bestBidPrice < bestAskPrice)
+      break;
+
+    Order *bidOrder = getBestBid();
+    Order *askOrder = getBestAsk();
+
+    int fillQty = std::min(bidOrder->quantity_, askOrder->quantity_);
+    int fillPrice = getBestBidPrice();
+    // bid > ask && bid is after ask
+    if (getBestBidPrice() > getBestAskPrice() && bidOrder->ts > askOrder->ts) {
+      fillPrice = getBestAskPrice();
+      int refundAmount = fillQty * (getBestBidPrice() - getBestAskPrice());
+      // need to refund quantity_filled*(bid-fill price) to buyer
     }
-
-    // bid > ask
-    // Buy@100 => sell@90 (fill price = 100, seller gets 100)
-
-    // Sell@90 => buy@100 (fill price = 90, buyer gets 90)
-    // need to refund quantity_filled*(bid-fill price) to buyer
   }
   return true;
 }

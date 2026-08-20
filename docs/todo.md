@@ -29,7 +29,10 @@
   - [x] display inventory
   - [x] display book
     - [x] Order* Orderbook::getOrder(int price, int trade_id)
+- [x] cancelBuy/cancelSell working
 - [ ] fillOrders
+  - [x] add unordered_map<trader_id, Trader*> traderRegistry to OrderMap
+    - [x] whenver new buy/sellOrder is made trader is added to this
   - [ ] when order fills add to history 
     - [ ] between which traders
     - [ ] time

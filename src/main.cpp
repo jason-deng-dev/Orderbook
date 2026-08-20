@@ -4,7 +4,7 @@
 #include <iostream>
 
 int main() {
-  Orderbook ob1{};
+  Orderbook ob1{"Stock1"};
 
   Trader t1("jason", 200);
   ob1.displayOrders();
@@ -20,6 +20,8 @@ int main() {
   ob1.sell(&t1, 20, 50);
 
   ob1.displayOrders();
+
+  
 
   return 0;
 }

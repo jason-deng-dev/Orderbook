@@ -20,13 +20,13 @@
   - [x] displayBuyOrders
   - [x] displaySellOrders
   - [x] displayOrderbook
-- [ ] cancelBuy/Sell fix
-  - [ ] for sell need to remove from inventory when putting up sellOrder
-  - [ ] for cancelSell need to add back to inventory
-  - [ ] new interface for cancelBuy/Sell 
-  - [ ] cancelBuy(trader*, trade_id, quantity, price)
-
-
+- [x] cancelBuy/Sell fix
+  - [x] for sell need to remove from inventory when putting up sellOrder
+  - [x] for cancelSell need to add back to inventory
+  - [x] new interface for cancelBuy/Sell 
+  - [x] cancelBuy(trader*, trade_id, quantity, price)
+- [ ] display Trader inventory/holdings
+  - [ ] display inventory
 - [ ] fillOrders
   - [ ] when order fills add to history 
     - [ ] between which traders

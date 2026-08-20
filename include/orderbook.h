@@ -47,8 +47,10 @@ public:
   bool cancelBuy(Trader *trader, int trade_id, int price, int quantity);
   bool cancelSell(Trader *trader, int trade_id, int price, int quantity);
 
-  int getBestBid() const { return buyOrderMap.rbegin()->first; }
-  int getBestAsk() const { return sellOrderMap.begin()->first; }
+  int getBestBidPrice() const { return buyOrderMap.rbegin()->first; }
+  int getBestAskPrice() const { return sellOrderMap.begin()->first; }
+
+
   void displayBuyOrders() const;
   void displaySellOrders() const;
   void displayOrders() const;
@@ -60,6 +62,14 @@ public:
   const Order *getSellOrder(int price, int trade_id) const {
     return findOrder(sellOrderMap, price, trade_id);
   }
+
+  Order* getBestBid();
+  Order* getBestAsk();
+
+  // invariant is this only called by Orderbook::handleFill when there is a bid/ask
+  void removeBestBid();
+  void removeBestAsk();
+
 };
 
 #endif

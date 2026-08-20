@@ -235,3 +235,44 @@ const Order *Orderbook::findOrder(const std::map<int, OrdersAtPrice> &orderMap,
     return nullptr;
   return &it->second;
 }
+
+Order *Orderbook::getBestBid() {
+  auto &ordersAtPrice = buyOrderMap[getBestBidPrice()];
+  return &ordersAtPrice.order_queue.begin()->second;
+};
+Order *Orderbook::getBestAsk() {
+  auto &ordersAtPrice = sellOrderMap[getBestAskPrice()];
+  return &ordersAtPrice.order_queue.begin()->second;
+};
+
+// invariant is this only called by Orderbook::handleFill when there is a
+// bid/ask
+void Orderbook::removeBestBid() {
+  auto & oq = buyOrderMap[getBestBidPrice()].order_queue;
+  oq.erase(oq.begin());
+};
+void Orderbook::removeBestAsk() {
+  auto & oq = sellOrderMap[getBestAskPrice()].order_queue;
+  oq.erase(oq.begin());
+};
+
+bool Orderbook::handleFill() {
+  bool buyEmpty = buyOrderMap.empty();
+  bool sellEmpty = sellOrderMap.empty();
+  if (buyEmpty || sellEmpty || getBestBidPrice() < getBestAskPrice())
+    return false;
+  while (!buyEmpty && !sellEmpty && getBestBidPrice() >= getBestAskPrice()) {
+    // bid = ask
+    if (getBestBidPrice() == getBestAskPrice()) {
+      // getBestBid
+      // getBestAsk
+    }
+
+    // bid > ask
+    // Buy@100 => sell@90 (fill price = 100, seller gets 100)
+
+    // Sell@90 => buy@100 (fill price = 90, buyer gets 90)
+    // need to refund quantity_filled*(bid-fill price) to buyer
+  }
+  return true;
+}

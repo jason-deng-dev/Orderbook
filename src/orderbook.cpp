@@ -42,16 +42,16 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
 
   // fail if order doesn't exist in buyOrderMap;
   if (!buyOrderMap.count(price) ||
-      !buyOrderMap[price].order_queue.count(trade_id)) {
+      !buyOrderMap.at(price).order_queue.count(trade_id)) {
     std::cerr << "buy cancel failed, order may not exist\n";
     return false;
   }
 
-  auto &order = buyOrderMap[price].order_queue[trade_id];
+  auto &order = buyOrderMap.at(price).order_queue.at(trade_id);
+  int orderQty = order.quantity_;
 
   if (order.quantity_ < quantity) {
-    std::cerr
-        << "buy cancel failed, cancel amount greater than order amount\n";
+    std::cerr << "buy cancel failed, cancel amount greater than order amount\n";
     return false;
   }
 
@@ -71,7 +71,7 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
       buyOrderMap.erase(price);
     }
 
-    trader->changeBalance(order.quantity_ * price);
+    trader->changeBalance(orderQty * price);
   }
 
   // partially cancel
@@ -86,23 +86,47 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
 
 bool Orderbook::cancelSell(Trader *trader, int trade_id, int price,
                            int quantity = 0) {
-  int trade_id = order->trade_id_;
-  int price = order->price_;
-
-  // fail if order doesn't exist in buyOrderMap;
   if (!sellOrderMap.count(price) ||
-      !sellOrderMap[price].order_queue.count(trade_id)) {
-    std::cerr << "sell cancelation failed, order may not exist\n";
+      !sellOrderMap.at(price).order_queue.count(trade_id)) {
+    std::cerr << "sell cancel failed, order may not exist\n";
     return false;
   }
 
-  if (quantity == 0) {
-    sellOrderMap[price].total_quantity -= order->quantity_;
-    sellOrderMap[price].order_queue.erase(trade_id);
-  } else {
-    sellOrderMap[price].total_quantity -= quantity;
-    order->quantity_ -= quantity;
+  auto &order = sellOrderMap.at(price).order_queue.at(trade_id);
+  int orderQty = order.quantity_;
+
+  if (order.quantity_ < quantity) {
+    std::cerr
+        << "sell cancel failed, cancel amount greater than order amount\n";
+    return false;
   }
+
+  if (order.trader_id_ != trader->getId()) {
+    std::cerr << "sell cancel failed, not your order\n";
+    return false;
+  }
+
+  // if quantity is left blank, fully cancel order
+  if (quantity == 0 || quantity == order.quantity_) {
+    trader->removeSellOrder(this, price, trade_id);
+    sellOrderMap[price].total_quantity -= order.quantity_;
+    sellOrderMap[price].order_queue.erase(trade_id);
+
+    // if order_queue is empty at price, remove from buyOrderMap
+    if (sellOrderMap[price].order_queue.empty()) {
+      sellOrderMap.erase(price);
+    }
+
+    trader->addStock(this, orderQty);
+  }
+
+  // partially cancel
+  else {
+    sellOrderMap[price].total_quantity -= quantity;
+    order.quantity_ -= quantity;
+    trader->addStock(this, quantity);
+  }
+
   return true;
 }
 

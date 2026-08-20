@@ -26,5 +26,10 @@ int main() {
 
   t1.displayBook(&ob1);
 
+  ob1.cancelBuy(&t1, 0, 10, 5);
+  ob1.cancelSell(&t1, 3, 20, 5);
+
+  t1.displayBook(&ob1);
+
   return 0;
 }

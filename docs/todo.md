@@ -25,10 +25,10 @@
   - [x] for cancelSell need to add back to inventory
   - [x] new interface for cancelBuy/Sell 
   - [x] cancelBuy(trader*, trade_id, quantity, price)
-- [ ] display Trader inventory/holdings
+- [x] display Trader inventory/holdings
   - [x] display inventory
-  - [ ] display book
-    - [ ] Order* Orderbook::getOrder(int price, int trade_id)
+  - [x] display book
+    - [x] Order* Orderbook::getOrder(int price, int trade_id)
 - [ ] fillOrders
   - [ ] when order fills add to history 
     - [ ] between which traders

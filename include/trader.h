@@ -47,6 +47,10 @@ public:
   void removeBuyOrder(Orderbook *orderbook, int price, int trade_id) {
     auto &vec = buyOrders[orderbook][price];
     vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
+    // if vec is empty should erase the pricePoint from buyOrders
+    if (vec.empty()) {
+      buyOrders[orderbook].erase(price);
+    }
   }
 
   void addSellOrder(Orderbook *orderbook, Order *order) {
@@ -56,6 +60,9 @@ public:
   void removeSellOrder(Orderbook *orderbook, int price, int trade_id) {
     auto &vec = sellOrders[orderbook][price];
     vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
+    if (vec.empty()) {
+      sellOrders[orderbook].erase(price);
+    }
   }
 
   void addStock(Orderbook *orderbook, int amount) {

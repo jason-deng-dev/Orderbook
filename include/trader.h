@@ -2,6 +2,7 @@
 #define TRADER_H
 
 #include "orders.h"
+#include <algorithm>
 #include <map>
 #include <string>
 #include <string_view>
@@ -37,14 +38,27 @@ public:
     inventory[orderbook] += amount;
   }
 
+  void changeBalance(int amount) { balance_ += amount; }
+
   void addBuyOrder(Orderbook *orderbook, Order *order) {
     buyOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
+
+  void removeBuyOrder(Orderbook *orderbook, int price, int trade_id) {
+    auto &vec = buyOrders[orderbook][price];
+    vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
+  }
+
   void addSellOrder(Orderbook *orderbook, Order *order) {
     sellOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
 
-  void addStock(Orderbook *orderbook, int amount){
+  void removeSellOrder(Orderbook *orderbook, int price, int trade_id) {
+    auto &vec = sellOrders[orderbook][price];
+    vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
+  }
+
+  void addStock(Orderbook *orderbook, int amount) {
     inventory[orderbook] += amount;
   }
 };

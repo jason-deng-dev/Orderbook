@@ -13,6 +13,7 @@
 #include <vector>
 
 class Trader;
+class Order;
 
 class Orderbook {
 private:
@@ -26,10 +27,20 @@ private:
   // if can be filled, fill order
   // when order filled add to order history
   bool handleFill();
+  const Order *findOrder(const std::map<int, OrdersAtPrice> &orderMap,
+                         int price, int trade_id) const {
+    auto level = orderMap.find(price);
+    if (level == orderMap.end())
+      return nullptr;
+    auto it = level->second.order_queue.find(trade_id);
+    if (it == level->second.order_queue.end())
+      return nullptr;
+    return &it->second;
+  }
 
 public:
   Orderbook(const std::string &name) : name_{name} {}
-  std::string_view getName() const {return name_;}
+  std::string_view getName() const { return name_; }
 
   // if succeed add the Orderbook* to trader, and add information on
   // quantity/price update trader balance update buyOrders
@@ -48,6 +59,14 @@ public:
   void displayBuyOrders() const;
   void displaySellOrders() const;
   void displayOrders() const;
+
+  // returns nullptr if doesn't exist
+  const Order *getBuyOrder(int price, int trade_id) const {
+    return findOrder(buyOrderMap, price, trade_id);
+  }
+  const Order *getSellOrder(int price, int trade_id) const {
+    return findOrder(sellOrderMap, price, trade_id);
+  }
 };
 
 #endif

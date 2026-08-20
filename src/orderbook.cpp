@@ -168,5 +168,6 @@ void Orderbook::displayOrders() const {
     } else {
       std::cout << std::string(54, ' ');
     }
+    std::cout <<'\n';
   }
 }

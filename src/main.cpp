@@ -25,7 +25,8 @@ int main() {
   ob1.displaySellOrders();
   ob1.sell(&t1, 20, 50);
   ob1.displaySellOrders();
-
+  
+  ob1.displayOrders();
 
   return 0;
 }

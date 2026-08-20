@@ -40,6 +40,7 @@ public:
   int getBestAsk() const { return sellOrderMap.begin()->first; }
   void displayBuyOrders() const ;
   void displaySellOrders() const;
+  void displayOrders() const;
 };
 
 #endif

@@ -16,10 +16,10 @@
   - [x] cancelSell
 - [x] add timestamp tracking for orders
 - [x] Rework Trader::buyOrder/sellOrder
-- [ ] display
+- [x] display
   - [x] displayBuyOrders
   - [x] displaySellOrders
-  - [ ] displayOrderbook
+  - [x] displayOrderbook
 - [ ] creating trader workflow
   - [x] add number of stock to inventory
   - [ ] add to buy/sellOrders function

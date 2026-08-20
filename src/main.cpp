@@ -16,12 +16,15 @@ int main() {
   ob1.buy(&t2, 5, 10);
 
   ob1.displayOrders();
-  t1.addStock(&ob1, 20);
-  ob1.sell(&t1, 20, 50);
+  t1.changeInventoryAmount(&ob1, 20);
+  ob1.sell(&t1, 20, 20);
 
   ob1.displayOrders();
 
-  
+  t1.displayInventory();
+  t2.displayInventory();
+
+  t1.displayBook(&ob1);
 
   return 0;
 }

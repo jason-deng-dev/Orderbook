@@ -117,14 +117,14 @@ bool Orderbook::cancelSell(Trader *trader, int trade_id, int price,
       sellOrderMap.erase(price);
     }
 
-    trader->addStock(this, orderQty);
+    trader->changeInventoryAmount(this, orderQty);
   }
 
   // partially cancel
   else {
     sellOrderMap[price].total_quantity -= quantity;
     order.quantity_ -= quantity;
-    trader->addStock(this, quantity);
+    trader->changeInventoryAmount(this, quantity);
   }
 
   return true;
@@ -224,3 +224,5 @@ void Orderbook::displayOrders() const {
   }
   std::cout << "\n\n\n";
 }
+
+

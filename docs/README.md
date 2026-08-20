@@ -268,5 +268,5 @@ Trader:
 - no dangling pointers
 - by storing price, can query Orderbook to get instead display
 
-cancelBuy(trader_id, trade_id, price)
+cancelBuy(trader*, trade_id, quantity, price)
 - book finds via buyOrderMap[price].order_queue O(log n)

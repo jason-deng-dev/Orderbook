@@ -20,6 +20,20 @@
   - [x] displayBuyOrders
   - [x] displaySellOrders
   - [x] displayOrderbook
+- [ ] cancelBuy/Sell fix
+  - [ ] for sell need to remove from inventory when putting up sellOrder
+  - [ ] for cancelSell need to add back to inventory
+  - [ ] new interface for cancelBuy/Sell 
+  - [ ] cancelBuy(trader*, trade_id, quantity, price)
+
+
+- [ ] fillOrders
+  - [ ] when order fills add to history 
+    - [ ] between which traders
+    - [ ] time
+    - [ ] amount/price
+    - [ ] trade_ids
+  - [ ] add to buyer inventory
 - [ ] creating trader workflow
   - [x] add number of stock to inventory
   - [ ] add to buy/sellOrders function

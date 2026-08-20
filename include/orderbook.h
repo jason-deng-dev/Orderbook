@@ -27,15 +27,16 @@ private:
 public:
   // if succeed add the Orderbook* to trader, and add information on
   // quantity/price update trader balance update buyOrders
-  bool buy(Trader *trader, int quantity, int price);
+  bool buy(Trader *trader, int price, int quantity);
 
   // if succeed update information on qunatity/price
   // update trader balance
   // update sellOrders
-  bool sell(Trader *trader, int quantity, int price);
+  bool sell(Trader *trader, int price, int quantity);
 
-  bool cancelBuy(Order *order, int quantity);
-  bool cancelSell(Order *order, int quantity);
+  bool cancelBuy(Trader* trader, int trade_id, int price, int quantity);
+  bool cancelSell(Trader* trader, int trade_id, int price, int quantity);
+
   int getBestBid() const { return buyOrderMap.rbegin()->first; }
   int getBestAsk() const { return sellOrderMap.begin()->first; }
   void displayBuyOrders() const ;

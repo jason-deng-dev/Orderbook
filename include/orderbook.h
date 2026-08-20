@@ -7,6 +7,7 @@
 #include <map>
 #include <queue>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -28,6 +29,8 @@ private:
 
 public:
   Orderbook(const std::string &name) : name_{name} {}
+  std::string_view getName() const {return name_;}
+
   // if succeed add the Orderbook* to trader, and add information on
   // quantity/price update trader balance update buyOrders
   bool buy(Trader *trader, int price, int quantity);

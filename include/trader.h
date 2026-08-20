@@ -36,6 +36,7 @@ public:
 
   void changeInventoryAmount(Orderbook *orderbook, int amount) {
     inventory[orderbook] += amount;
+    if (inventory[orderbook] == 0) inventory.erase(orderbook);
   }
 
   void changeBalance(int amount) { balance_ += amount; }
@@ -65,9 +66,8 @@ public:
     }
   }
 
-  void addStock(Orderbook *orderbook, int amount) {
-    inventory[orderbook] += amount;
-  }
+  void displayInventory();
+  void displayBook(Orderbook *orderbook);
 };
 
 #endif

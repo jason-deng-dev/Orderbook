@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-bool Orderbook::buy(Trader *trader, int quantity, int price) {
+bool Orderbook::buy(Trader *trader, int price, int quantity) {
   if (trader->getBalance() < quantity * price) {
     std::cerr << "buy failed, insufficent funds\n";
     return false;
@@ -17,33 +17,11 @@ bool Orderbook::buy(Trader *trader, int quantity, int price) {
   auto [it, inserted] = buyOrderMap[price].order_queue.emplace(
       trade_id, Order(trade_id, quantity, trader->getId(), price));
   trader->addBuyOrder(this, &it->second);
+  trader->changeBalance(-quantity*price);
   return true;
 }
 
-// can partially cancel amount
-// can fully cancel order if quantity left blank
-bool Orderbook::cancelBuy(Order *order, int quantity = 0) {
-  int trade_id = order->trade_id_;
-  int price = order->price_;
-
-  // fail if order doesn't exist in buyOrderMap;
-  if (!buyOrderMap.count(price) ||
-      !buyOrderMap[price].order_queue.count(trade_id)) {
-    std::cerr << "buy cancelation failed, order may not exist\n";
-    return false;
-  }
-
-  if (quantity == 0) {
-    buyOrderMap[price].total_quantity -= order->quantity_;
-    buyOrderMap[price].order_queue.erase(trade_id);
-  } else {
-    buyOrderMap[price].total_quantity -= quantity;
-    order->quantity_ -= quantity;
-  }
-  return true;
-}
-
-bool Orderbook::sell(Trader *trader, int quantity, int price) {
+bool Orderbook::sell(Trader *trader, int price, int quantity) {
   if (trader->getInventoryAmount(this) < quantity) {
     std::cerr << "sell failed, insufficent holding of stock \n";
     return false;
@@ -57,7 +35,44 @@ bool Orderbook::sell(Trader *trader, int quantity, int price) {
   return true;
 }
 
-bool Orderbook::cancelSell(Order *order, int quantity = 0) {
+// can partially cancel amount
+// can fully cancel order if quantity left blank
+
+bool Orderbook::cancelBuy(Trader* trader, int trade_id, int price, int quantity=0) {
+
+  // if fully cancelBuyOrder remove from Trader::buyOrders
+
+
+
+
+
+  return true;
+}
+
+// bool Orderbook::cancelBuy(Order *order, int quantity = 0) {
+//   int trade_id = order->trade_id_;
+//   int price = order->price_;
+
+//   // fail if order doesn't exist in buyOrderMap;
+//   if (!buyOrderMap.count(price) ||
+//       !buyOrderMap[price].order_queue.count(trade_id)) {
+//     std::cerr << "buy cancelation failed, order may not exist\n";
+//     return false;
+//   }
+
+//   if (quantity == 0) {
+//     buyOrderMap[price].total_quantity -= order->quantity_;
+//     buyOrderMap[price].order_queue.erase(trade_id);
+//   } else {
+//     buyOrderMap[price].total_quantity -= quantity;
+//     order->quantity_ -= quantity;
+//   }
+//   return true;
+// }
+
+
+
+bool Orderbook::cancelSell(Trader* trader, int trade_id,int price,  int quantity = 0) {
   int trade_id = order->trade_id_;
   int price = order->price_;
 

@@ -167,7 +167,9 @@ void Orderbook::displayOrders() const {
       ++sell_it;
     } else {
       std::cout << std::string(54, ' ');
+      std::cout << '\n';
     }
-    std::cout <<'\n';
+    
   }
+  std::cout <<"\n\n\n";
 }

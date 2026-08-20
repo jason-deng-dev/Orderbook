@@ -270,3 +270,59 @@ Trader:
 
 cancelBuy(trader*, trade_id, quantity, price)
 - book finds via buyOrderMap[price].order_queue O(log n)
+
+
+## Fill order logic
+
+gets called anytime a new buy/sell order is placed
+handleFill() 
+
+when a order is filled
+- buyer info gets updated 
+  - inventory gets updated
+  - buyOrders gets updated
+- seller info gets updated
+  - gets funds
+  - sellOrders gets updated
+- Orderbook::buyOrderMap and Orderbook::sellOrderMap gets updated
+- add information to tradeLog
+  - vector<Trade> tradeLog
+
+Trade {
+  std::chrono::system_clock::time_point time_of_fill
+  int buyer_id
+  int seller_id
+  int fill_price
+  int fill_qty
+} 
+
+if partial fill
+- update the top bid and top ask to reduce the quantity
+
+handleFill keeps filling while bestBid >= bestAsk
+
+Fill price
+- is dictated by the older order's limit price
+- agressor (new order) gets the resting order's price
+- fill older order's limit, and newer order gets improvement 
+
+Buy@100 => sell@90 (fill price = 100, seller gets 100)
+
+Sell@90 => buy@100 (fill price = 90, buyer gets 90)
+- need to refund quantity*(locked - fill price) to buyer
+- quantity* (100-90) to buyer
+
+Orderbook
+
+Order* getBestBid()
+Order* getBestAsk()
+
+removeBestBid
+removeBestAsk
+
+Orderbook::buyOrderMap[price] = OrderAtPrice
+if OrderAtPrice.order_queue is empty, erase Orderbook::buyOrderMap.erase(price);
+
+same for sellOrderMap
+
+std::unordered_map<>

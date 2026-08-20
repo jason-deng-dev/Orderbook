@@ -27,16 +27,9 @@ private:
   // if can be filled, fill order
   // when order filled add to order history
   bool handleFill();
+  
   const Order *findOrder(const std::map<int, OrdersAtPrice> &orderMap,
-                         int price, int trade_id) const {
-    auto level = orderMap.find(price);
-    if (level == orderMap.end())
-      return nullptr;
-    auto it = level->second.order_queue.find(trade_id);
-    if (it == level->second.order_queue.end())
-      return nullptr;
-    return &it->second;
-  }
+                         int price, int trade_id) const;
 
 public:
   Orderbook(const std::string &name) : name_{name} {}

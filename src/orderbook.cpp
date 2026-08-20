@@ -225,4 +225,13 @@ void Orderbook::displayOrders() const {
   std::cout << "\n\n\n";
 }
 
-
+const Order *Orderbook::findOrder(const std::map<int, OrdersAtPrice> &orderMap,
+                                  int price, int trade_id) const {
+  auto level = orderMap.find(price);
+  if (level == orderMap.end())
+    return nullptr;
+  auto it = level->second.order_queue.find(trade_id);
+  if (it == level->second.order_queue.end())
+    return nullptr;
+  return &it->second;
+}

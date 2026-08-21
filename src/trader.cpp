@@ -27,8 +27,9 @@ void displayBookHelper(const Orderbook *orderbook,
         return;
       }
 
-      std::string timeStr = std::format("{:%H:%M:%S}",
-                           std::chrono::floor<std::chrono::milliseconds>(order->ts));
+      std::string timeStr =
+          std::format("{:%H:%M:%S}",
+                      std::chrono::floor<std::chrono::milliseconds>(order->ts));
 
       std::string idStr = std::to_string(trade_id);
       std::string pxStr = std::to_string(price);
@@ -42,14 +43,14 @@ void displayBookHelper(const Orderbook *orderbook,
   }
 }
 
-void Trader::displayInventory() {
+void Trader::displayInventory() const {
   std::cout << name_ << " balance : " << balance_ << '\n';
   for (auto &[orderbook, amount] : inventory) {
     std::cout << orderbook->getName() << " : " << amount << '\n';
   }
   std::cout << '\n';
 }
-void Trader::displayBook(Orderbook *orderbook) {
+void Trader::displayBook(Orderbook *orderbook) const {
   std::cout << orderbook->getName() << ": \n\nBuy Orders:\n";
 
   std::cout << std::string(60, '-') << '\n';
@@ -58,7 +59,7 @@ void Trader::displayBook(Orderbook *orderbook) {
             << std::string(5, ' ') << "\n";
   std::cout << std::string(60, '-') << '\n';
 
-  displayBookHelper(orderbook, buyOrders[orderbook], "buy");
+  displayBookHelper(orderbook,  buyOrders.at(orderbook), "buy");
 
   std::cout << std::string(60, '-') << '\n';
   std::cout << "\n\nSell Orders:\n";
@@ -68,5 +69,5 @@ void Trader::displayBook(Orderbook *orderbook) {
             << std::string(5, ' ') << "\n";
   std::cout << std::string(60, '-') << '\n';
 
-  displayBookHelper(orderbook, sellOrders[orderbook], "sell");
+  displayBookHelper(orderbook, sellOrders.at(orderbook), "sell");
 }

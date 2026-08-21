@@ -32,11 +32,14 @@ public:
   int getBalance() const { return balance_; }
   std::string_view getName() const { return name_; }
 
-  int getInventoryAmount(Orderbook *orderbook) { return inventory[orderbook]; }
+  int getInventoryAmount(Orderbook *orderbook) const {
+    return inventory.at(orderbook);
+  }
 
   void changeInventoryAmount(Orderbook *orderbook, int amount) {
     inventory[orderbook] += amount;
-    if (inventory[orderbook] == 0) inventory.erase(orderbook);
+    if (inventory[orderbook] == 0)
+      inventory.erase(orderbook);
   }
 
   void changeBalance(int amount) { balance_ += amount; }
@@ -66,8 +69,21 @@ public:
     }
   }
 
-  void displayInventory();
-  void displayBook(Orderbook *orderbook);
+  void displayInventory() const;
+  void displayBook(Orderbook *orderbook) const;
+
+  // return -1 if no bestBid
+  int getBestBid(Orderbook *orderbook) {
+    if (buyOrders[orderbook].empty())
+      return -1;
+    return buyOrders[orderbook].rbegin()->first;
+  }
+
+  int getBestAsk(Orderbook *orderbook) {
+    if (sellOrders[orderbook].empty())
+      return -1;
+    return sellOrders[orderbook].begin()->first;
+  }
 };
 
 #endif

@@ -43,7 +43,7 @@ void displayBookHelper(const Orderbook *orderbook,
 }
 
 void Trader::displayInventory() {
-  std::cout << name_ << " inventory \nbalance : " << balance_ << '\n';
+  std::cout << name_ << " balance : " << balance_ << '\n';
   for (auto &[orderbook, amount] : inventory) {
     std::cout << orderbook->getName() << " : " << amount << '\n';
   }

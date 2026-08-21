@@ -1,6 +1,7 @@
 #include "../include/trader.h"
 #include "../include/orderbook.h"
 #include <ctime>
+#include <format>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -25,16 +26,8 @@ void displayBookHelper(const Orderbook *orderbook,
         return;
       }
 
-      // format timestamp as HH:MM:SS.mmm
-      auto t = std::chrono::system_clock::to_time_t(order->ts);
-      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    order->ts.time_since_epoch()) %
-                1000;
-      std::tm tm = *std::localtime(&t);
-      std::stringstream ss;
-      ss << std::put_time(&tm, "%H:%M:%S") << '.' << std::setw(3)
-         << std::setfill('0') << ms.count();
-      std::string timeStr = ss.str();
+      std::string timeStr = std::format("{:%H:%M:%S}",
+                           std::chrono::floor<std::chrono::milliseconds>(order->ts));
 
       std::string idStr = std::to_string(trade_id);
       std::string pxStr = std::to_string(price);
@@ -57,7 +50,7 @@ void Trader::displayInventory() {
 }
 void Trader::displayBook(Orderbook *orderbook) {
   std::cout << orderbook->getName() << ": \n\nBuy Orders:\n";
-  
+
   std::cout << std::string(60, '-') << '\n';
   std::cout << "HH:MM:SS.mmm" << "| " << "Trade ID" << std::string(2, ' ')
             << "| " << "Price" << std::string(3, ' ') << "| " << "Qty"

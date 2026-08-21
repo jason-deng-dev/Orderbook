@@ -8,6 +8,7 @@
 #include <string>
 
 int Trader::next_id_ = 0;
+
 void displayBookHelper(const Orderbook *orderbook,
                        const std::map<int, std::vector<int>> &orders,
                        const std::string &type) {

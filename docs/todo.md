@@ -30,15 +30,17 @@
   - [x] display book
     - [x] Order* Orderbook::getOrder(int price, int trade_id)
 - [x] cancelBuy/cancelSell working
-- [ ] fillOrders
+- [x] fillOrders
   - [x] add unordered_map<trader_id, Trader*> traderRegistry to OrderMap
     - [x] whenver new buy/sellOrder is made trader is added to this
-  - [ ] when order fills add to history 
-    - [ ] between which traders
-    - [ ] time
-    - [ ] amount/price
-    - [ ] trade_ids
-  - [ ] add to buyer inventory
+  - [x] when order fills add to history 
+    - [x] between which traders
+    - [x] time
+    - [x] amount/price
+    - [x] trade_ids
+  - [x] add to buyer inventory
+  - [x] add funds to seller
+- [ ] Self-Trade Prevention
 - [ ] creating trader workflow
   - [x] add number of stock to inventory
   - [ ] add to buy/sellOrders function

@@ -11,6 +11,11 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
     std::cerr << "buy failed, insufficent funds\n";
     return false;
   }
+  if (!buyValidityCheck(trader, price)) {
+    std::cerr << "buy failed, you currently have resting order than can match "
+                 "against current buy order.\n";
+    return false;
+  }
 
   traderRegistry[trader->getId()] = trader;
 
@@ -27,18 +32,18 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
               << " quantity:" << quantity << " triggered a order fill\n";
   }
 
-  if (!buyValidityCheck(trader, price)) {
-    std::cerr << "buy failed, you currently have resting order than can match "
-                 "against current buy order.\n";
-    return false;
-  }
-
   return true;
 }
 
 bool Orderbook::sell(Trader *trader, int price, int quantity) {
   if (trader->getInventoryAmount(this) < quantity) {
     std::cerr << "sell failed, insufficent holding of stock \n";
+    return false;
+  }
+
+  if (!sellValidityCheck(trader, price)) {
+    std::cerr << "sell failed, you currently have resting order than can match "
+                 "against current sell order.\n";
     return false;
   }
 
@@ -56,11 +61,6 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
               << " quantity:" << quantity << " triggered a order fill\n";
   }
 
-  if (!sellValidityCheck(trader, price)) {
-    std::cerr << "sell failed, you currently have resting order than can match "
-                 "against current sell order.\n";
-    return false;
-  }
   return true;
 }
 
@@ -350,12 +350,14 @@ bool Orderbook::handleFill() {
 }
 
 bool Orderbook::buyValidityCheck(Trader *trader, int price) {
-  if (trader->getBestAsk(this) <= price)
-    return false;
-  return true;
+  int bestAsk = trader->getBestAsk(this);
+  if (bestAsk == -1 || bestAsk > price)
+    return true;
+  return false;
 };
 bool Orderbook::sellValidityCheck(Trader *trader, int price) {
-  if (trader->getBestBid(this) >= price)
-    return false;
-  return true;
+  int bestBid = trader->getBestBid(this);
+  if (bestBid == -1 || bestBid < price)
+    return true;
+  return false;
 };

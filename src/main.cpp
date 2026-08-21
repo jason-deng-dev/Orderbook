@@ -13,25 +13,30 @@ int main() {
 
 
   ob1.displayOrders();
-
-
-
-
-  ob1.buy(&t2, 10, 10);
-  std::cout<< "\n\nInventory before: \n";
-  t1.displayInventory();
-  t2.displayInventory();
-
-
-
+  ob1.buy(&t1, 10, 10);
   ob1.displayOrders();
-  ob1.sell(&t1, 10, 10);
-
+  ob1.sell(&t1, 11, 10);
   ob1.displayOrders();
+  ob1.buy(&t1, 11, 1);
 
-  std::cout<< "\n\nInventory after: \n";
-  t1.displayInventory();
-  t2.displayInventory();
+
+
+
+  // ob1.buy(&t2, 10, 10);
+  // std::cout<< "\n\nInventory before: \n";
+  // t1.displayInventory();
+  // t2.displayInventory();
+
+
+
+  // ob1.displayOrders();
+  // ob1.sell(&t1, 10, 10);
+
+  // ob1.displayOrders();
+
+  // std::cout<< "\n\nInventory after: \n";
+  // t1.displayInventory();
+  // t2.displayInventory();
 
 
 

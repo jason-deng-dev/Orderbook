@@ -23,7 +23,8 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
   trader->changeBalance(-quantity * price);
 
   if (handleFill()) {
-    std::cout << "Bid by trader:" << trader->getName() << " price:" << price << " quantity:" << quantity << " triggered a order fill\n";
+    std::cout << "Bid by trader:" << trader->getName() << " price:" << price
+              << " quantity:" << quantity << " triggered a order fill\n";
   }
   return true;
 }
@@ -44,7 +45,8 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
   trader->addSellOrder(this, &it->second);
 
   if (handleFill()) {
-    std::cout << "Ask by trader:" << trader->getName() << " price:" << price << " quantity:" << quantity << " triggered a order fill\n";
+    std::cout << "Ask by trader:" << trader->getName() << " price:" << price
+              << " quantity:" << quantity << " triggered a order fill\n";
   }
   return true;
 }
@@ -282,7 +284,8 @@ bool Orderbook::handleFill() {
   int bestBidPrice = getBestBidPrice();
   int bestAskPrice = getBestAskPrice();
 
-  if (buyOrderMap.empty() || sellOrderMap.empty() || bestBidPrice < bestAskPrice)
+  if (buyOrderMap.empty() || sellOrderMap.empty() ||
+      bestBidPrice < bestAskPrice)
     return false;
 
   while (!buyOrderMap.empty() && !sellOrderMap.empty()) {
@@ -299,7 +302,7 @@ bool Orderbook::handleFill() {
     auto buyer = traderRegistry[bidOrder->trader_id_];
     auto seller = traderRegistry[askOrder->trader_id_];
 
-    assert(buyer != nullptr && seller!= nullptr);
+    assert(buyer != nullptr && seller != nullptr);
 
     int fillQty = std::min(bidOrder->quantity_, askOrder->quantity_);
     int fillPrice = getBestBidPrice();
@@ -312,14 +315,13 @@ bool Orderbook::handleFill() {
 
     tradeHistory.push_back(
         {bidOrder->trader_id_, askOrder->trader_id_, fillPrice, fillQty});
-    
 
     // add funds to seller
-    seller->changeBalance(fillPrice*fillQty);  
-    
+    seller->changeBalance(fillPrice * fillQty);
+
     // add stock to buyer
     buyer->changeInventoryAmount(this, fillQty);
-    
+
     bidOrder->quantity_ -= fillQty;
     askOrder->quantity_ -= fillQty;
 
@@ -329,7 +331,18 @@ bool Orderbook::handleFill() {
     if (askOrder->quantity_ == 0) {
       removeBestAsk();
     }
-    std::cout << "Order filled at " << tradeHistory.back().getTime() <<'\n';
+    std::cout << "Order filled at " << tradeHistory.back().getTime() << '\n';
   }
   return true;
 }
+
+bool Orderbook::buyValidityCheck(Trader *trader, int price) {
+  if (trader->getBestAsk(this) <= price)
+    return false;
+  return true;
+};
+bool Orderbook::sellValidityCheck(Trader *trader, int price) {
+  if (trader->getBestBid(this) >= price)
+    return false;
+  return true;
+};

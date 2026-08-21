@@ -2,9 +2,12 @@
 #define ORDERS_H
 
 #include <chrono>
+#include <format>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -20,12 +23,14 @@ struct Order {
   Order(int trade_id, int quantity, int trader_id, int price)
       : ts(std::chrono::system_clock::now()), trade_id_(trade_id),
         quantity_(quantity), trader_id_(trader_id), price_(price) {}
+
+  std::string getTime() { return std::format("{:%Y-%m-%d %H:%M:%S}", ts); }
 };
 
 struct OrdersAtPrice {
   int total_quantity = 0;
   // <Order::trade_id_, Order*>
-  std::map<int, Order> order_queue;
+  std::map<int, Order> order_queue{};
 };
 
 struct Trade {
@@ -37,6 +42,7 @@ struct Trade {
   Trade(int buyer_id, int seller_id, int fill_price, int fill_qty)
       : time_of_fill_(std::chrono::system_clock::now()), buyer_id_(buyer_id),
         seller_id_(seller_id), fill_price_(fill_price), fill_qty_(fill_qty) {}
+  std::string getTime() { return std::format("{:%Y-%m-%d %H:%M:%S}", time_of_fill_); }
 };
 
 #endif

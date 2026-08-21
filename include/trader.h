@@ -20,9 +20,9 @@ private:
   std::string name_;
   int balance_;
   // unordered_map<Orderbook*, map<price, vector<trade_id>>>
-  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> buyOrders;
-  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> sellOrders;
-  std::unordered_map<Orderbook *, int> inventory;
+  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> buyOrders{};
+  std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> sellOrders{};
+  std::unordered_map<Orderbook *, int> inventory{};
 
 public:
   Trader(const std::string &name, int balance = 0.0)

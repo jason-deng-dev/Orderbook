@@ -74,13 +74,13 @@ public:
 
   // return -1 if no bestBid
   int getBestBid(Orderbook *orderbook) const {
-    if (buyOrders.at(orderbook).empty())
+    if (!buyOrders.count(orderbook) || buyOrders.at(orderbook).empty())
       return -1;
     return buyOrders.at(orderbook).rbegin()->first;
   }
 
   int getBestAsk(Orderbook *orderbook) const {
-    if (sellOrders.at(orderbook).empty())
+    if (!sellOrders.count(orderbook) || sellOrders.at(orderbook).empty())
       return -1;
     return sellOrders.at(orderbook).begin()->first;
   }

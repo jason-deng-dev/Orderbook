@@ -1,6 +1,7 @@
 #include "../include/orderbook.h"
 #include "../include/trader.h"
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <iostream>
 #include <string>
@@ -20,6 +21,10 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
       trade_id, Order(trade_id, quantity, trader->getId(), price));
   trader->addBuyOrder(this, &it->second);
   trader->changeBalance(-quantity * price);
+
+  if (handleFill()) {
+    std::cout << "Bid by trader:" << trader->getName() << " price:" << price << " quantity:" << quantity << " triggered a order fill\n";
+  }
   return true;
 }
 
@@ -37,6 +42,10 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
   auto [it, inserted] = sellOrderMap[price].order_queue.emplace(
       trade_id, Order(trade_id, quantity, trader->getId(), price));
   trader->addSellOrder(this, &it->second);
+
+  if (handleFill()) {
+    std::cout << "Ask by trader:" << trader->getName() << " price:" << price << " quantity:" << quantity << " triggered a order fill\n";
+  }
   return true;
 }
 
@@ -253,25 +262,30 @@ Order *Orderbook::getBestAsk() {
 // invariant is this only called by Orderbook::handleFill when there is a
 // bid/ask
 void Orderbook::removeBestBid() {
-  auto &oq = buyOrderMap[getBestBidPrice()].order_queue;
+  int bestPrice = getBestBidPrice();
+  auto &oq = buyOrderMap[bestPrice].order_queue;
   oq.erase(oq.begin());
+  if (oq.empty()) {
+    buyOrderMap.erase(bestPrice);
+  }
 };
 void Orderbook::removeBestAsk() {
-  auto &oq = sellOrderMap[getBestAskPrice()].order_queue;
+  int bestPrice = getBestAskPrice();
+  auto &oq = sellOrderMap[bestPrice].order_queue;
   oq.erase(oq.begin());
+  if (oq.empty()) {
+    sellOrderMap.erase(bestPrice);
+  }
 };
 
 bool Orderbook::handleFill() {
-  bool buyEmpty = buyOrderMap.empty();
-  bool sellEmpty = sellOrderMap.empty();
-
   int bestBidPrice = getBestBidPrice();
   int bestAskPrice = getBestAskPrice();
 
-  if (buyEmpty || sellEmpty || bestBidPrice < bestAskPrice)
+  if (buyOrderMap.empty() || sellOrderMap.empty() || bestBidPrice < bestAskPrice)
     return false;
 
-  while (!buyEmpty && !sellEmpty) {
+  while (!buyOrderMap.empty() && !sellOrderMap.empty()) {
     bestBidPrice = getBestBidPrice();
     bestAskPrice = getBestAskPrice();
 
@@ -280,15 +294,42 @@ bool Orderbook::handleFill() {
 
     Order *bidOrder = getBestBid();
     Order *askOrder = getBestAsk();
+    assert(bidOrder != nullptr && askOrder != nullptr);
+
+    auto buyer = traderRegistry[bidOrder->trader_id_];
+    auto seller = traderRegistry[askOrder->trader_id_];
+
+    assert(buyer != nullptr && seller!= nullptr);
 
     int fillQty = std::min(bidOrder->quantity_, askOrder->quantity_);
     int fillPrice = getBestBidPrice();
-    // bid > ask && bid is after ask
+
     if (getBestBidPrice() > getBestAskPrice() && bidOrder->ts > askOrder->ts) {
       fillPrice = getBestAskPrice();
       int refundAmount = fillQty * (getBestBidPrice() - getBestAskPrice());
-      // need to refund quantity_filled*(bid-fill price) to buyer
+      buyer->changeBalance(refundAmount);
     }
+
+    tradeHistory.push_back(
+        {bidOrder->trader_id_, askOrder->trader_id_, fillPrice, fillQty});
+    
+
+    // add funds to seller
+    seller->changeBalance(fillPrice*fillQty);  
+    
+    // add stock to buyer
+    buyer->changeInventoryAmount(this, fillQty);
+    
+    bidOrder->quantity_ -= fillQty;
+    askOrder->quantity_ -= fillQty;
+
+    if (bidOrder->quantity_ == 0) {
+      removeBestBid();
+    }
+    if (askOrder->quantity_ == 0) {
+      removeBestAsk();
+    }
+    std::cout << "Order filled at " << tradeHistory.back().getTime() <<'\n';
   }
   return true;
 }

@@ -72,6 +72,10 @@ public:
   // bid/ask
   void removeBestBid();
   void removeBestAsk();
+
+  // checks validity of operation, to prevent self-trade
+  bool buyValidityCheck(Trader *trader, int price) ;
+  bool sellValidityCheck(Trader* trader, int price);
 };
 
 #endif

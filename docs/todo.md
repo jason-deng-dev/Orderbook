@@ -1,7 +1,7 @@
 - [x] rework data structure of BuyOrders/SellOrders
 - [x] rework OrdersAtPrice
   - [x] globally monotonically increasing unique order id
-  - [x] rework to use map<order_id, Order*>
+  - [x] rework to use map<order_id, Order\*>
 - [x] Trader sync
   - [x] <Orderbook*, vector<Order*>> buyOrders/sellOrders
   - [x] add price value to Order
@@ -23,36 +23,30 @@
 - [x] cancelBuy/Sell fix
   - [x] for sell need to remove from inventory when putting up sellOrder
   - [x] for cancelSell need to add back to inventory
-  - [x] new interface for cancelBuy/Sell 
-  - [x] cancelBuy(trader*, trade_id, quantity, price)
+  - [x] new interface for cancelBuy/Sell
+  - [x] cancelBuy(trader\*, trade_id, quantity, price)
 - [x] display Trader inventory/holdings
   - [x] display inventory
   - [x] display book
-    - [x] Order* Orderbook::getOrder(int price, int trade_id)
+    - [x] Order\* Orderbook::getOrder(int price, int trade_id)
 - [x] cancelBuy/cancelSell working
 - [x] fillOrders
-  - [x] add unordered_map<trader_id, Trader*> traderRegistry to OrderMap
+  - [x] add unordered_map<trader_id, Trader\*> traderRegistry to OrderMap
     - [x] whenver new buy/sellOrder is made trader is added to this
-  - [x] when order fills add to history 
+  - [x] when order fills add to history
     - [x] between which traders
     - [x] time
     - [x] amount/price
     - [x] trade_ids
   - [x] add to buyer inventory
   - [x] add funds to seller
-- [ ] Self-Trade Prevention
-- [ ] creating trader workflow
-  - [x] add number of stock to inventory
-  - [ ] add to buy/sellOrders function
-  - [ ] edit buy/sellOrders function
-  - [ ] adding balance
-  - [ ] withdraw balance
+- [x] Self-Trade Prevention
 - [ ] Ensure memory leak safety
   - [ ] ensure RAII (resource acquisition is intialization)
 - [ ] buying stock workflow
 - [ ] selling stock workflow
 - [ ] cancel buy stock workflow
 - [ ] cancel sell stock workflow
-- [ ] display buy/sell 
+- [ ] display buy/sell
   - [ ] show buyers/sellers count
   - [ ] show quantity/price

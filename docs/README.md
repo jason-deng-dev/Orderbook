@@ -325,4 +325,24 @@ if OrderAtPrice.order_queue is empty, erase Orderbook::buyOrderMap.erase(price);
 
 same for sellOrderMap
 
-std::unordered_map<>
+## Self-Trade prevention
+Issue:
+if a trader has the top bid/ask orders and they fill, the transaction goes through, as a result the trader performs a transaction with themself
+
+Goal:
+during process of handleFill do not process the order fill if the topBid and topAsk is by the same trader
+
+currently handleFill is called after each successful Orderbook::buy/sell
+
+Idea:
+detect if new order from trader will match against one of their resting orders
+- Cancel Newest/Taker
+- new order is rejected, existing resting order stays in the book
+
+for buy order:
+- check if trader has a sell order with ask <= current bid
+
+for sell order:
+- check if trader has a buy order with bid >= current ask
+
+

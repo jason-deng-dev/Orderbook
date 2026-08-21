@@ -26,6 +26,13 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
     std::cout << "Bid by trader:" << trader->getName() << " price:" << price
               << " quantity:" << quantity << " triggered a order fill\n";
   }
+
+  if (!buyValidityCheck(trader, price)) {
+    std::cerr << "buy failed, you currently have resting order than can match "
+                 "against current buy order.\n";
+    return false;
+  }
+
   return true;
 }
 
@@ -47,6 +54,12 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
   if (handleFill()) {
     std::cout << "Ask by trader:" << trader->getName() << " price:" << price
               << " quantity:" << quantity << " triggered a order fill\n";
+  }
+
+  if (!sellValidityCheck(trader, price)) {
+    std::cerr << "sell failed, you currently have resting order than can match "
+                 "against current sell order.\n";
+    return false;
   }
   return true;
 }

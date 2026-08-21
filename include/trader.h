@@ -73,16 +73,16 @@ public:
   void displayBook(Orderbook *orderbook) const;
 
   // return -1 if no bestBid
-  int getBestBid(Orderbook *orderbook) {
-    if (buyOrders[orderbook].empty())
+  int getBestBid(Orderbook *orderbook) const {
+    if (buyOrders.at(orderbook).empty())
       return -1;
-    return buyOrders[orderbook].rbegin()->first;
+    return buyOrders.at(orderbook).rbegin()->first;
   }
 
-  int getBestAsk(Orderbook *orderbook) {
-    if (sellOrders[orderbook].empty())
+  int getBestAsk(Orderbook *orderbook) const {
+    if (sellOrders.at(orderbook).empty())
       return -1;
-    return sellOrders[orderbook].begin()->first;
+    return sellOrders.at(orderbook).begin()->first;
   }
 };
 

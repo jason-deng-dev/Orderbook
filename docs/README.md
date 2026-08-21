@@ -345,4 +345,3 @@ for buy order:
 for sell order:
 - check if trader has a buy order with bid >= current ask
 
-

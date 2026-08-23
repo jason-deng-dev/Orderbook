@@ -41,3 +41,9 @@
   - [x] add to buyer inventory
   - [x] add funds to seller
 - [x] Self-Trade Prevention
+- [ ] Correctness + tests
+  - [ ] CMake setup
+  - [ ] GoogleTest setup
+- [ ] Mutex addition
+- [ ] singe-writer matching, lock-free reads
+- [ ] Benchmarks

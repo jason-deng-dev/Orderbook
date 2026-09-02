@@ -12,7 +12,7 @@ int Trader::next_id_ = 0;
 bool Trader::removeOrder(
     Orderbook *orderbook, int price, int trade_id,
     std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> &orders) {
-  if (!orders.count(orderbook) || !orders.count(orderbook))
+  if (!orders.count(orderbook) || !orders.at(orderbook).count(price))
     return false;
   auto &vec = orders[orderbook][price];
   auto it = std::find(vec.begin(), vec.end(), trade_id);

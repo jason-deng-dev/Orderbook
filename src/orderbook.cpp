@@ -79,7 +79,8 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
   // if fully cancelBuyOrder remove from Trader::buyOrders
   // on cancel return balance
   if (quantity <= 0) {
-    std::cerr << "buy cancel failed, cannot cancel amount less than or equal to 0\n";
+    std::cerr
+        << "buy cancel failed, cannot cancel amount less than or equal to 0\n";
     return false;
   }
 
@@ -131,10 +132,11 @@ bool Orderbook::cancelSell(Trader *trader, int trade_id, int price,
                            int quantity = 0) {
 
   if (quantity <= 0) {
-    std::cerr << "sell cancel failed, cannot cancel amount less than or equal to 0\n";
+    std::cerr
+        << "sell cancel failed, cannot cancel amount less than or equal to 0\n";
     return false;
   }
-  
+
   if (!sellOrderMap.count(price) ||
       !sellOrderMap.at(price).order_queue.count(trade_id)) {
     std::cerr << "sell cancel failed, order may not exist\n";
@@ -365,9 +367,14 @@ bool Orderbook::handleFill() {
     askOrder->quantity_ -= fillQty;
 
     if (bidOrder->quantity_ == 0) {
+      // need to remove bid from trader
+      traderRegistry[bidOrder->trader_id_]->removeBuyOrder(
+          this, bidOrder->price_, bidOrder->trade_id_);
       removeBestBid();
     }
     if (askOrder->quantity_ == 0) {
+      traderRegistry[askOrder->trader_id_]->removeSellOrder(
+          this, askOrder->price_, askOrder->trade_id_);
       removeBestAsk();
     }
     std::cout << "Order filled at " << tradeHistory.back().getTime() << '\n';

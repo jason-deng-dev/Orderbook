@@ -54,6 +54,7 @@
   - [x] getBestBid/AskPrice() should return -1 if no best offer
   - [x] handleFill should return false if bestBidPrice or bestAskPrice == -1, since missing an order
   - [x] negative amount for buy/sell and cancelBuy/cancelSell handling
+  - [x] when handleFill, if a bid or ask is fully filled, need to also remove that bid/ask from buyer/seller 
 - [ ] Mutex addition
 - [ ] singe-writer matching, lock-free reads
 - [ ] Benchmarks

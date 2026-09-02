@@ -78,7 +78,7 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
                           int quantity = 0) {
   // if fully cancelBuyOrder remove from Trader::buyOrders
   // on cancel return balance
-  if (quantity <= 0) {
+  if (quantity < 0) {
     std::cerr
         << "buy cancel failed, cannot cancel amount less than or equal to 0\n";
     return false;
@@ -131,7 +131,7 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
 bool Orderbook::cancelSell(Trader *trader, int trade_id, int price,
                            int quantity = 0) {
 
-  if (quantity <= 0) {
+  if (quantity < 0) {
     std::cerr
         << "sell cancel failed, cannot cancel amount less than or equal to 0\n";
     return false;

@@ -3,6 +3,7 @@
 #include "trader.h"
 #include <gtest/gtest.h>
 
+// Trader tests
 TEST(TraderTest, Initalization) {
   Trader t1("t1");
   EXPECT_EQ(t1.getId(), 0);
@@ -106,6 +107,7 @@ TEST(TraderTest, sellOrderOperations) {
   EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o3.trade_id_), false);
 }
 
+// Orderbook tests
 TEST(OrderbookTest, sellOperations) {
   Orderbook ob{"Stock1"};
   Trader t1("t1", 200);
@@ -172,3 +174,202 @@ TEST(OrderbookTest, buyOperations) {
   EXPECT_EQ(ob.getBestBidPrice(), -1);
 }
 
+// resting ask, crossing buy at same price -> full fill at ask price
+TEST(OrderbookTest, fillSamePrice) {
+  Orderbook ob{"Stock1"};
+  Trader seller("seller", 0);
+  Trader buyer("buyer", 200);
+  seller.changeInventoryAmount(&ob, 5);
+
+  // resting ask, no bid -> no fill
+  EXPECT_EQ(ob.sell(&seller, 10, 5), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 10);
+  EXPECT_EQ(buyer.getBalance(), 200);
+
+  // crossing buy at same price -> full fill, both sides consumed
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 5);
+  EXPECT_EQ(buyer.getBalance(), 150); // paid 5 * 10
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(seller.getBalance(), 50); // received 5 * 10
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+  // filled orders removed from book
+  EXPECT_EQ(ob.getBuyOrder(10, 1), nullptr);
+  EXPECT_EQ(ob.getSellOrder(10, 0), nullptr);
+}
+
+// resting bid, aggressor sell below bid -> fill at passive bid price
+TEST(OrderbookTest, fillAggressorSellGetsBidPrice) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("buyer", 200);
+  Trader seller("seller", 0);
+  seller.changeInventoryAmount(&ob, 5);
+
+  // resting bid 5 @ 10
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+  EXPECT_EQ(buyer.getBalance(), 150);
+  EXPECT_EQ(ob.getBestBidPrice(), 10);
+
+  // seller crosses at 9, fills at resting bid price 10
+  EXPECT_EQ(ob.sell(&seller, 9, 5), true);
+  EXPECT_EQ(seller.getBalance(), 50); // got 10, not 9
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 5);
+  EXPECT_EQ(buyer.getBalance(), 150); // no refund, paid 10 upfront
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+}
+
+// resting ask, aggressor buy above ask -> fill at ask price with refund
+TEST(OrderbookTest, fillAggressorBuyPaysAskPrice) {
+  Orderbook ob{"Stock1"};
+  Trader seller("seller", 0);
+  Trader buyer("buyer", 200);
+  seller.changeInventoryAmount(&ob, 5);
+
+  // resting ask 5 @ 9
+  EXPECT_EQ(ob.sell(&seller, 9, 5), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 9);
+
+  // buyer crosses at 10, fills at 9, gets refunded the difference
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+  EXPECT_EQ(buyer.getBalance(), 155); // paid 50, refunded 5
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 5);
+  EXPECT_EQ(seller.getBalance(), 45); // received 5 * 9
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+}
+
+// resting bid partially filled, remaining qty stays on the book
+TEST(OrderbookTest, fillPartialFillRestingBid) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("buyer", 200);
+  Trader seller("seller", 0);
+  seller.changeInventoryAmount(&ob, 3);
+
+  // resting bid 5 @ 10
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+
+  // seller crosses with 3 -> partial fill of bid
+  EXPECT_EQ(ob.sell(&seller, 9, 3), true);
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 3);
+  EXPECT_EQ(seller.getBalance(), 30); // filled at resting bid price 10
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  // remaining 2 @ 10 still resting
+  ASSERT_NE(ob.getBuyOrder(10, 0), nullptr);
+  EXPECT_EQ(ob.getBuyOrder(10, 0)->quantity_, 2);
+  EXPECT_EQ(ob.getBestBidPrice(), 10);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+}
+
+// aggressor bid partially filled, remaining qty stays on the book
+TEST(OrderbookTest, fillPartialFillAggressorBid) {
+  Orderbook ob{"Stock1"};
+  Trader seller("seller", 0);
+  Trader buyer("buyer", 200);
+  seller.changeInventoryAmount(&ob, 3);
+
+  // resting ask 3 @ 9
+  EXPECT_EQ(ob.sell(&seller, 9, 3), true);
+
+  // buyer crosses with 5 -> fills 3 at ask price 9, refunds 3
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 3);
+  EXPECT_EQ(buyer.getBalance(), 153); // paid 50, refunded 3 * (10 - 9)
+  EXPECT_EQ(seller.getBalance(), 27); // received 3 * 9
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  // remaining 2 @ 10 still resting
+  ASSERT_NE(ob.getBuyOrder(10, 1), nullptr);
+  EXPECT_EQ(ob.getBuyOrder(10, 1)->quantity_, 2);
+  EXPECT_EQ(ob.getBestBidPrice(), 10);
+}
+
+// no cross: bid below ask, both orders rest
+TEST(OrderbookTest, fillNoCross) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("buyer", 200);
+  Trader seller("seller", 0);
+  seller.changeInventoryAmount(&ob, 5);
+
+  EXPECT_EQ(ob.buy(&buyer, 9, 5), true);   // bid 9
+  EXPECT_EQ(ob.sell(&seller, 10, 5), true); // ask 10
+  EXPECT_EQ(buyer.getBalance(), 155);       // no fill, no cash movement
+  EXPECT_EQ(seller.getBalance(), 0);
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(seller.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(ob.getBestBidPrice(), 9);
+  EXPECT_EQ(ob.getBestAskPrice(), 10);
+  // both orders still on the book
+  ASSERT_NE(ob.getBuyOrder(9, 0), nullptr);
+  EXPECT_EQ(ob.getBuyOrder(9, 0)->quantity_, 5);
+  ASSERT_NE(ob.getSellOrder(10, 1), nullptr);
+  EXPECT_EQ(ob.getSellOrder(10, 1)->quantity_, 5);
+}
+
+// aggressive bid crosses two ask levels, refund per level
+TEST(OrderbookTest, fillMultiLevel) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("buyer", 1000);
+  Trader seller1("seller1", 0);
+  Trader seller2("seller2", 0);
+  seller1.changeInventoryAmount(&ob, 5);
+  seller2.changeInventoryAmount(&ob, 3);
+
+  // resting asks: 5 @ 90, 3 @ 95
+  EXPECT_EQ(ob.sell(&seller1, 90, 5), true);
+  EXPECT_EQ(ob.sell(&seller2, 95, 3), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 90);
+
+  // buyer crosses with 8 @ 100 -> 5 @ 90 (refund 50), 3 @ 95 (refund 15)
+  EXPECT_EQ(ob.buy(&buyer, 100, 8), true);
+  EXPECT_EQ(buyer.getBalance(), 265); // paid 800, refunded 65
+  EXPECT_EQ(buyer.getInventoryAmount(&ob), 8);
+  EXPECT_EQ(seller1.getBalance(), 450);
+  EXPECT_EQ(seller2.getBalance(), 285);
+  EXPECT_EQ(seller1.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(seller2.getInventoryAmount(&ob), 0);
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+}
+
+// own resting order cannot be crossed (self-trade prevention)
+TEST(OrderbookTest, fillSelfTradePrevented) {
+  Orderbook ob{"Stock1"};
+  Trader t1("t1", 200);
+  t1.changeInventoryAmount(&ob, 10);
+
+  // resting ask 10 @ 10
+  EXPECT_EQ(ob.sell(&t1, 10, 10), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 10);
+
+  // own buy at or above own ask -> blocked
+  EXPECT_EQ(ob.buy(&t1, 11, 1), false);
+  EXPECT_EQ(ob.buy(&t1, 10, 1), false);
+  EXPECT_EQ(t1.getBalance(), 200); // no cash movement
+
+  // own buy below own ask -> allowed, both rest
+  EXPECT_EQ(ob.buy(&t1, 9, 1), true);
+  EXPECT_EQ(t1.getBalance(), 191);
+  EXPECT_EQ(ob.getBestBidPrice(), 9);
+  EXPECT_EQ(ob.getBestAskPrice(), 10);
+}
+
+// FIX: filled orders leave stale entries in Trader's book
+TEST(OrderbookTest, fillCleansTraderBook) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("buyer", 200);
+  Trader seller("seller", 0);
+  seller.changeInventoryAmount(&ob, 5);
+
+  // full fill 5 @ 10
+  EXPECT_EQ(ob.buy(&buyer, 10, 5), true);
+  EXPECT_EQ(ob.sell(&seller, 10, 5), true);
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+
+  // trader side should also be clean after fill
+  EXPECT_EQ(buyer.getBestBid(&ob), -1);  // currently stale -> FAILS
+  EXPECT_EQ(seller.getBestAsk(&ob), -1); // currently stale -> FAILS
+}

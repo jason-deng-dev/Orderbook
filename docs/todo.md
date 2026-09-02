@@ -52,6 +52,7 @@
   - [x] removeBuyOrder and removeSellOrder should return false if failed to find the order to remove (can't find orderbook, price, trade_id)
 - [ ] Orderbook fixes
   - [x] getBestBid/AskPrice() should return -1 if no best offer
+  - [x] handleFill should return false if bestBidPrice or bestAskPrice == -1, since missing an order
 - [ ] Mutex addition
 - [ ] singe-writer matching, lock-free reads
 - [ ] Benchmarks

@@ -284,6 +284,7 @@ void Orderbook::removeBestBid() {
     buyOrderMap.erase(bestPrice);
   }
 };
+
 void Orderbook::removeBestAsk() {
   int bestPrice = getBestAskPrice();
   auto &oq = sellOrderMap[bestPrice].order_queue;
@@ -296,6 +297,11 @@ void Orderbook::removeBestAsk() {
 bool Orderbook::handleFill() {
   int bestBidPrice = getBestBidPrice();
   int bestAskPrice = getBestAskPrice();
+
+  // no bid or no ask
+  if (bestBidPrice == -1 || bestAskPrice == -1) {
+    return false;
+  }
 
   if (buyOrderMap.empty() || sellOrderMap.empty() ||
       bestBidPrice < bestAskPrice)

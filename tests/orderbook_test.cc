@@ -42,7 +42,7 @@ TEST(TraderTest, balanceOperations) {
 
 TEST(TraderTest, buyOrderOperations) {
   Trader t1("t1");
-   Orderbook ob{"Stock"};
+  Orderbook ob{"Stock"};
   Order o1(0, 10, t1.getId(), 50);
   Order o2(1, 10, t1.getId(), 70);
   Order o3(2, 10, t1.getId(), 100);
@@ -58,12 +58,50 @@ TEST(TraderTest, buyOrderOperations) {
   t1.addBuyOrder(&ob, &o3);
   EXPECT_EQ(t1.getBestBid(&ob), 100);
 
-  t1.removeBuyOrder(&ob, 100, o3.trade_id_);
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o1.trade_id_), false);
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 40, o3.trade_id_), false);
+
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o3.trade_id_), true);
   EXPECT_EQ(t1.getBestBid(&ob), 70);
 
-  t1.removeBuyOrder(&ob, 70, o2.trade_id_);
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 70, o2.trade_id_), true);
   EXPECT_EQ(t1.getBestBid(&ob), 50);
 
-  t1.removeBuyOrder(&ob, 50, o1.trade_id_);
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 50, o1.trade_id_), true);
   EXPECT_EQ(t1.getBestBid(&ob), -1);
+
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o3.trade_id_), false);
+}
+
+TEST(TraderTest, sellOrderOperations) {
+  Trader t1("t1");
+  Orderbook ob{"Stock"};
+  Order o1(0, 10, t1.getId(), 100);
+  Order o2(1, 10, t1.getId(), 70);
+  Order o3(2, 10, t1.getId(), 50);
+
+  EXPECT_EQ(t1.getBestAsk(&ob), -1);
+
+  t1.addSellOrder(&ob, &o1);
+  EXPECT_EQ(t1.getBestAsk(&ob), 100);
+
+  t1.addSellOrder(&ob, &o2);
+  EXPECT_EQ(t1.getBestAsk(&ob), 70);
+
+  t1.addSellOrder(&ob, &o3);
+  EXPECT_EQ(t1.getBestAsk(&ob), 50);
+
+  EXPECT_EQ(t1.removeSellOrder(&ob, 100, o2.trade_id_), false);
+  EXPECT_EQ(t1.removeSellOrder(&ob, 40, o3.trade_id_), false);
+
+  EXPECT_EQ(t1.removeSellOrder(&ob, 50, o3.trade_id_), true);
+  EXPECT_EQ(t1.getBestAsk(&ob), 70);
+
+  EXPECT_EQ(t1.removeSellOrder(&ob, 70, o2.trade_id_), true);
+  EXPECT_EQ(t1.getBestAsk(&ob), 100);
+
+  EXPECT_EQ(t1.removeSellOrder(&ob, 100, o1.trade_id_), true);
+  EXPECT_EQ(t1.getBestAsk(&ob), -1);
+
+  EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o3.trade_id_), false);
 }

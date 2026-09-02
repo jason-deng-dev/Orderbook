@@ -37,7 +37,9 @@ add_executable(orderbook_test
 
 target_link_libraries(orderbook_test
   GTest::gtest_main
+  orderbook_core
 )
 
 include(GoogleTest)
-gtest_discover_tests(orderbook_test)
+gtest_discover_tests(orderbook_test orders_test trader_test)
+

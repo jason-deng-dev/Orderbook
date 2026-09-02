@@ -44,6 +44,8 @@
 - [ ] Correctness + tests
   - [ ] CMake setup
   - [ ] GoogleTest setup
+  - [ ] adding exception if needed
+  - [ ] add failure modes for functions and handle them
 - [ ] Mutex addition
 - [ ] singe-writer matching, lock-free reads
 - [ ] Benchmarks

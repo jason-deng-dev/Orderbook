@@ -370,6 +370,6 @@ TEST(OrderbookTest, fillCleansTraderBook) {
   EXPECT_EQ(ob.getBestAskPrice(), -1);
 
   // trader side should also be clean after fill
-  EXPECT_EQ(buyer.getBestBid(&ob), -1);  // currently stale -> FAILS
-  EXPECT_EQ(seller.getBestAsk(&ob), -1); // currently stale -> FAILS
+  EXPECT_EQ(buyer.getBestBid(&ob), -1); 
+  EXPECT_EQ(seller.getBestAsk(&ob), -1); 
 }

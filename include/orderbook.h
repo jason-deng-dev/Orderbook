@@ -50,8 +50,17 @@ public:
   bool cancelBuy(Trader *trader, int trade_id, int price, int quantity);
   bool cancelSell(Trader *trader, int trade_id, int price, int quantity);
 
-  int getBestBidPrice() const { return buyOrderMap.rbegin()->first; }
-  int getBestAskPrice() const { return sellOrderMap.begin()->first; }
+  // return -1 if not found
+  int getBestBidPrice() const {
+    if (buyOrderMap.empty())
+      return -1;
+    return buyOrderMap.rbegin()->first;
+  }
+  int getBestAskPrice() const {
+    if (sellOrderMap.empty())
+      return -1;
+    return sellOrderMap.begin()->first;
+  }
 
   void displayBuyOrders() const;
   void displaySellOrders() const;
@@ -74,8 +83,8 @@ public:
   void removeBestAsk();
 
   // checks validity of operation, to prevent self-trade
-  bool buyValidityCheck(Trader *trader, int price) ;
-  bool sellValidityCheck(Trader* trader, int price);
+  bool buyValidityCheck(Trader *trader, int price);
+  bool sellValidityCheck(Trader *trader, int price);
 };
 
 #endif

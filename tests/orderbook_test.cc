@@ -105,3 +105,70 @@ TEST(TraderTest, sellOrderOperations) {
 
   EXPECT_EQ(t1.removeBuyOrder(&ob, 100, o3.trade_id_), false);
 }
+
+TEST(OrderbookTest, sellOperations) {
+  Orderbook ob{"Stock1"};
+  Trader t1("t1", 200);
+  Trader t2("t2", 200);
+
+  // give trader 1, 20 stock
+  t1.changeInventoryAmount(&ob, 20);
+  EXPECT_EQ(t1.getInventoryAmount(&ob), 20);
+
+  // selling when don't have stock
+  EXPECT_EQ(ob.sell(&t2, 20, 20), false);
+
+  // selling partial amount
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+  EXPECT_EQ(ob.sell(&t1, 20, 1), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 20);
+  EXPECT_EQ(t1.getInventoryAmount(&ob), 19);
+
+  // unsuccessful cancel sell order
+  EXPECT_EQ(ob.cancelSell(&t2, 0, 20, 1), false);
+  EXPECT_EQ(ob.cancelSell(&t1, 1, 20, 1), false); // wrong trade id
+  EXPECT_EQ(ob.cancelSell(&t1, 0, 19, 1), false); // wrong price
+  EXPECT_EQ(ob.cancelSell(&t1, 0, 20, 2), false); // too high quantity
+  EXPECT_EQ(ob.cancelSell(&t1, 0, 20, -1), false); // negative quantity
+
+
+  // successful cancel sell order
+  EXPECT_EQ(ob.cancelSell(&t1, 0, 20, 1), true);
+  EXPECT_EQ(t1.getInventoryAmount(&ob), 20);
+
+  // selling full amount
+  EXPECT_EQ(ob.getBestAskPrice(), -1);
+  EXPECT_EQ(ob.sell(&t1, 20, 20), true);
+  EXPECT_EQ(ob.getBestAskPrice(), 20);
+  EXPECT_EQ(t1.getInventoryAmount(&ob), 0);
+}
+
+TEST(OrderbookTest, buyOperations) {
+  Orderbook ob{"Stock1"};
+  Trader buyer("t2", 200);
+
+  // unsucessful buyOrder
+  EXPECT_EQ(ob.buy(&buyer, 20, 11), false); // no enough funds
+  EXPECT_EQ(ob.buy(&buyer, 201, 1), false); // no enough funds
+  EXPECT_EQ(ob.buy(&buyer, 20, -1), false); // negative quantity
+
+  // sucessful buyOrder
+   EXPECT_EQ(ob.getBestBidPrice(), -1);
+  EXPECT_EQ(ob.buy(&buyer, 20, 5), true);
+  EXPECT_EQ(buyer.getBalance(), 100);
+  EXPECT_EQ(ob.getBestBidPrice(), 20);
+
+  // unsuccessful cancel buy order
+  EXPECT_EQ(ob.cancelBuy(&buyer, 1, 20, 5), false); // wrong trade id
+  EXPECT_EQ(ob.cancelBuy(&buyer, 0, 19, 1), false); // wrong price
+  EXPECT_EQ(ob.cancelBuy(&buyer, 0, 20, 6), false); // too high quantity
+  EXPECT_EQ(ob.cancelBuy(&buyer, 0, 20, -1), false); // negative quantity
+
+  // sucessful cancel buy order
+  EXPECT_EQ(ob.cancelBuy(&buyer, 0, 20, 1), true);
+  EXPECT_EQ(buyer.getBalance(), 120);
+  EXPECT_EQ(ob.cancelBuy(&buyer, 0, 20, 4), true);
+  EXPECT_EQ(buyer.getBalance(), 200);
+  EXPECT_EQ(ob.getBestBidPrice(), -1);
+}
+

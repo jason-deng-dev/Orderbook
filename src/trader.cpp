@@ -9,6 +9,24 @@
 
 int Trader::next_id_ = 0;
 
+bool Trader::removeOrder(
+    Orderbook *orderbook, int price, int trade_id,
+    std::unordered_map<Orderbook *, std::map<int, std::vector<int>>> &orders) {
+  if (!orders.count(orderbook) || !orders.count(orderbook))
+    return false;
+  auto &vec = orders[orderbook][price];
+  auto it = std::find(vec.begin(), vec.end(), trade_id);
+  if (it == vec.end()) {
+    return false;
+  }
+  vec.erase(it);
+  // if vec is empty should erase the pricePoint from buyOrders
+  if (vec.empty()) {
+    orders[orderbook].erase(price);
+  }
+  return true;
+}
+
 void displayBookHelper(const Orderbook *orderbook,
                        const std::map<int, std::vector<int>> &orders,
                        const std::string &type) {
@@ -50,6 +68,7 @@ void Trader::displayInventory() const {
   }
   std::cout << '\n';
 }
+
 void Trader::displayBook(Orderbook *orderbook) const {
   std::cout << orderbook->getName() << ": \n\nBuy Orders:\n";
 
@@ -59,7 +78,7 @@ void Trader::displayBook(Orderbook *orderbook) const {
             << std::string(5, ' ') << "\n";
   std::cout << std::string(60, '-') << '\n';
 
-  displayBookHelper(orderbook,  buyOrders.at(orderbook), "buy");
+  displayBookHelper(orderbook, buyOrders.at(orderbook), "buy");
 
   std::cout << std::string(60, '-') << '\n';
   std::cout << "\n\nSell Orders:\n";

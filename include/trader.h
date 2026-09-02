@@ -65,21 +65,7 @@ public:
   bool
   removeOrder(Orderbook *orderbook, int price, int trade_id,
               std::unordered_map<Orderbook *, std::map<int, std::vector<int>>>
-                  &orders) {
-    if (!orders.count(orderbook) || !orders.count(orderbook))
-      return false;
-    auto &vec = orders[orderbook][price];
-    auto it = std::find(vec.begin(), vec.end(), trade_id);
-    if (it == vec.end()) {
-      return false;
-    }
-    vec.erase(it);
-    // if vec is empty should erase the pricePoint from buyOrders
-    if (vec.empty()) {
-      orders[orderbook].erase(price);
-    }
-    return true;
-  }
+                  &orders);
 
   void displayInventory() const;
   void displayBook(Orderbook *orderbook) const;

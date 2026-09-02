@@ -54,3 +54,4 @@
   - [x] negative amount for buy/sell and cancelBuy/cancelSell handling
   - [x] when handleFill, if a bid or ask is fully filled, need to also remove that bid/ask from buyer/seller 
 - [ ] Benchmarks
+  - [x] buy/sell/handleFill remove std::cout/std::cerr

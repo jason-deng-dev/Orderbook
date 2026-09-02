@@ -32,10 +32,11 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
   trader->addBuyOrder(this, &it->second);
   trader->changeBalance(-quantity * price);
 
-  if (handleFill()) {
-    std::cout << "Bid by trader:" << trader->getName() << " price:" << price
-              << " quantity:" << quantity << " triggered a order fill\n";
-  }
+    handleFill();
+  // if (handleFill()) {
+  //   std::cout << "Bid by trader:" << trader->getName() << " price:" << price
+  //             << " quantity:" << quantity << " triggered a order fill\n";
+  // }
 
   return true;
 }
@@ -66,10 +67,11 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
       trade_id, Order(trade_id, quantity, trader->getId(), price));
   trader->addSellOrder(this, &it->second);
 
-  if (handleFill()) {
-    std::cout << "Ask by trader:" << trader->getName() << " price:" << price
-              << " quantity:" << quantity << " triggered a order fill\n";
-  }
+  handleFill();
+  // if (handleFill()) {
+  //   std::cout << "Ask by trader:" << trader->getName() << " price:" << price
+  //             << " quantity:" << quantity << " triggered a order fill\n";
+  // }
 
   return true;
 }
@@ -377,7 +379,7 @@ bool Orderbook::handleFill() {
           this, askOrder->price_, askOrder->trade_id_);
       removeBestAsk();
     }
-    std::cout << "Order filled at " << tradeHistory.back().getTime() << '\n';
+    // std::cout << "Order filled at " << tradeHistory.back().getTime() << '\n';
   }
   return true;
 }

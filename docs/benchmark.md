@@ -80,9 +80,6 @@ static void BM_SellEmptyBook(benchmark::State &state) {
 }
 ```
 
-
-![alt text](image-2.png)
-
 # BM_BuyCrossSingleLevel
 - benchmark for having a single buy order fill at one price level
 
@@ -106,8 +103,6 @@ static void BM_BuyCrossSingleLevel(benchmark::State &state) {
 };
 ```
 
-![alt text](image-3.png)
-
 # BM_SellCrossSingleLevel
 - benchmark for having a single sell order fill at one price level
 
@@ -130,5 +125,3 @@ static void BM_SellCrossSingleLevel(benchmark::State &state) {
   }
 };
 ```
-
-![alt text](image-4.png)

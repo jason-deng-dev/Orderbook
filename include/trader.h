@@ -33,6 +33,7 @@ public:
   std::string_view getName() const { return name_; }
 
   int getInventoryAmount(Orderbook *orderbook) const {
+    if (!inventory.count(orderbook)) return 0;
     return inventory.at(orderbook);
   }
 

@@ -53,6 +53,7 @@
 - [ ] Orderbook fixes
   - [x] getBestBid/AskPrice() should return -1 if no best offer
   - [x] handleFill should return false if bestBidPrice or bestAskPrice == -1, since missing an order
+  - [x] negative amount for buy/sell and cancelBuy/cancelSell handling
 - [ ] Mutex addition
 - [ ] singe-writer matching, lock-free reads
 - [ ] Benchmarks

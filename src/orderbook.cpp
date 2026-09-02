@@ -7,6 +7,11 @@
 #include <string>
 
 bool Orderbook::buy(Trader *trader, int price, int quantity) {
+  if (quantity <= 0) {
+    std::cerr << "buy failed, cannot buy less than or equal to 0 quantity\n";
+    return false;
+  }
+
   if (trader->getBalance() < quantity * price) {
     std::cerr << "buy failed, insufficent funds\n";
     return false;
@@ -36,6 +41,11 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
 }
 
 bool Orderbook::sell(Trader *trader, int price, int quantity) {
+  if (quantity <= 0) {
+    std::cerr << "sell failed, cannot sell less than or equal to 0 quantity\n";
+    return false;
+  }
+
   if (trader->getInventoryAmount(this) < quantity) {
     std::cerr << "sell failed, insufficent holding of stock \n";
     return false;
@@ -68,6 +78,10 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
                           int quantity = 0) {
   // if fully cancelBuyOrder remove from Trader::buyOrders
   // on cancel return balance
+  if (quantity <= 0) {
+    std::cerr << "buy cancel failed, cannot cancel amount less than or equal to 0\n";
+    return false;
+  }
 
   // fail if order doesn't exist in buyOrderMap;
   if (!buyOrderMap.count(price) ||
@@ -115,6 +129,12 @@ bool Orderbook::cancelBuy(Trader *trader, int trade_id, int price,
 
 bool Orderbook::cancelSell(Trader *trader, int trade_id, int price,
                            int quantity = 0) {
+
+  if (quantity <= 0) {
+    std::cerr << "sell cancel failed, cannot cancel amount less than or equal to 0\n";
+    return false;
+  }
+  
   if (!sellOrderMap.count(price) ||
       !sellOrderMap.at(price).order_queue.count(trade_id)) {
     std::cerr << "sell cancel failed, order may not exist\n";

@@ -46,6 +46,10 @@
   - [ ] GoogleTest setup
   - [ ] adding exception if needed
   - [ ] add failure modes for functions and handle them
+- [ ] Trader fixes
+  - [x] getInventoryAmount should return 0, if Orderbook not in inventory
+  - [x] refactor removeSellOrder/removeBuyOrder into removeOrder called by both
+  - [x] removeBuyOrder and removeSellOrder should return false if failed to find the order to remove (can't find orderbook, price, trade_id)
 - [ ] Mutex addition
 - [ ] singe-writer matching, lock-free reads
 - [ ] Benchmarks

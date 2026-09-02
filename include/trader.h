@@ -33,7 +33,8 @@ public:
   std::string_view getName() const { return name_; }
 
   int getInventoryAmount(Orderbook *orderbook) const {
-    if (!inventory.count(orderbook)) return 0;
+    if (!inventory.count(orderbook))
+      return 0;
     return inventory.at(orderbook);
   }
 
@@ -49,25 +50,35 @@ public:
     buyOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
 
-  void removeBuyOrder(Orderbook *orderbook, int price, int trade_id) {
-    auto &vec = buyOrders[orderbook][price];
-    vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
-    // if vec is empty should erase the pricePoint from buyOrders
-    if (vec.empty()) {
-      buyOrders[orderbook].erase(price);
-    }
-  }
-
   void addSellOrder(Orderbook *orderbook, Order *order) {
     sellOrders[orderbook][order->price_].push_back(order->trade_id_);
   }
 
-  void removeSellOrder(Orderbook *orderbook, int price, int trade_id) {
-    auto &vec = sellOrders[orderbook][price];
-    vec.erase(std::remove(vec.begin(), vec.end(), trade_id), vec.end());
-    if (vec.empty()) {
-      sellOrders[orderbook].erase(price);
+  bool removeBuyOrder(Orderbook *orderbook, int price, int trade_id) {
+    return removeOrder(orderbook, price, trade_id, buyOrders);
+  }
+
+  bool removeSellOrder(Orderbook *orderbook, int price, int trade_id) {
+    return removeOrder(orderbook, price, trade_id, sellOrders);
+  }
+
+  bool
+  removeOrder(Orderbook *orderbook, int price, int trade_id,
+              std::unordered_map<Orderbook *, std::map<int, std::vector<int>>>
+                  &orders) {
+    if (!orders.count(orderbook) || !orders.count(orderbook))
+      return false;
+    auto &vec = orders[orderbook][price];
+    auto it = std::find(vec.begin(), vec.end(), trade_id);
+    if (it == vec.end()) {
+      return false;
     }
+    vec.erase(it);
+    // if vec is empty should erase the pricePoint from buyOrders
+    if (vec.empty()) {
+      orders[orderbook].erase(price);
+    }
+    return true;
   }
 
   void displayInventory() const;

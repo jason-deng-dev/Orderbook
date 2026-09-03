@@ -1,3 +1,4 @@
+# Intial design
 traders
 - hold buy and sell orders
 - able to see total outcoming/incoming order costs etc
@@ -345,3 +346,58 @@ for buy order:
 for sell order:
 - check if trader has a buy order with bid >= current ask
 
+## Benchmark implementation
+
+### Approach 1:
+```c
+static void BM_BuyEmptyBook(benchmark::State &state) {
+  for (auto _ : state) {
+    state.PauseTiming();
+    Orderbook ob("stock1");
+    Trader t("t", 1000000);
+    state.ResumeTiming();
+
+    ob.buy(&t, 100, 10);
+    benchmark::DoNotOptimize(ob);
+    state.PauseTiming();
+  }
+}
+```
+- pausing state, creating Orderbook and trader, and then resuming state
+- while also pausing state after buy is completed to negate destructor cost
+
+Cons:
+
+- still allocating new Orderbook every iteration, even if not timing allocation, it affects CPU's cache state (whether the book's memory is cold or fresh)
+- in a real trading system, orderbook persists for millions of orders
+
+![alt text](image.png)
+
+
+### Approach 2:
+```c
+static void BM_BuyEmptyBook(benchmark::State &state) {
+  Orderbook ob("stock1");
+  Trader t("t", 1000000);
+  int currTradeId = 0;
+
+  for (auto _ : state) {
+    ob.buy(&t, 100, 10);
+    benchmark::DoNotOptimize(ob);
+
+    // End of timed section
+    state.PauseTiming();
+    ob.cancelBuy(&t, currTradeId++, 100, 10);
+    state.ResumeTiming();
+  }
+}
+```
+- having Orderbook and trader persist through benchmark
+- at end of buy operation, pause state and cancelBuy and then resuming order
+- thus book stays empty, trader never runs out of cash, and we can measure the true hot-cache insertion time.
+
+![alt text](image-1.png)
+
+Conclusion:
+- By having orderbook and trader persist through the benchmark we are able to better capture the true cost of the buy operation.
+- from 498ns to 145ns which is a 3.43x increase speedup, and 70.9% faster

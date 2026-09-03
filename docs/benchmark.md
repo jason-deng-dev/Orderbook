@@ -119,11 +119,12 @@ trader->changeInventoryAmount(this, -quantity);
 - comparing the full implementation of `Orderbook::buy` and `Orderbook::sell`, the two code paths differ only in the trader's account bookkeeping:
   - buy: `trader->changeBalance()` — plain `int` member read/write
   - sell: `trader->changeInventoryAmount()` — position stored in `std::unordered_map<Orderbook*, int>`, each `operator[]` does a pointer hash lookup
-- `addBuyOrder`/`addSellOrder`, the fill engine (`handleFill`), and the map/queue maintenance are mirror implementations between the sides — the matching engine itself is buy/sell symmetric
+- `addBuyOrder`/`addSellOrder`, `handleFill`, and the map/queue maintenance are mirror implementations between the sides — the matching engine itself is buy/sell symmetric
 - the sell side also pays hash cost on every entry guard: `getInventoryAmount(this)` (`count()` + `at()`) where buy only reads the `balance_` member
 - so sell incurs ~4-5 unordered_map hash lookups per call that buy does not, matching the consistent +3.2-5.6% across every op pair
-- note the `inventory[orderbook] == 0` erase check is *not* the driver: in these benchmarks inventory never reaches zero during the timed section, so the erase branch never fires — the cost is the double `operator[]` hashing itself
+- the `inventory[orderbook] == 0` erase does fire in some timed sells: whenever the taker sells their entire holding in one op (`BM_SellCrossSingleLevel`: 10→0, `BM_SellCrossThreeLevels`: 9→0), the erase runs inside the timed `sell()` entry. Buy-side timed sections never erase — the resting seller is already zeroed when posting the order (setup/reset, untimed)
+- but the erase is not the sole driver: 4 of 6 sell benchmarks never hit zero in the timed section (empty book 100→90, partial fill 100→95, both cancels 190→200) yet show the same 3-5% gap — and the largest delta (+5.6%, cancel erase level) is a no-erase case. The consistent cost is the double `operator[]` hashing plus the guard lookups; the erase adds cost on top only for the cross benchmarks
 - the cancel pair is the cleanest isolation: `cancelBuy`/`cancelSell` are identical except `changeBalance` vs `changeInventoryAmount`, yet still show +3.2%/+5.6%
 
-The asymmetry is a `Trader` bookkeeping artifact, not an engine property: cash is a flat `int` member while positions live in a hash map keyed by book pointer. A flat representation (array/struct keyed by book id) would make sell-side cost match buy-side.
+The asymmetry is a `Trader` bookkeeping artifact: cash is a flat `int` member while positions live in a hash map keyed by orderbook pointer. A flat representation (array/struct keyed by book id) would make sell-side cost match buy-side.
 

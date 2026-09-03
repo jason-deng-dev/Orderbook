@@ -6,25 +6,28 @@
 #include <cmath>
 #include <vector>
 
-static double p50(const std::vector<double>& v) {
-    std::vector<double> data = v;
-    std::sort(data.begin(), data.end());
-    if (data.empty()) return 0.0;
-    return data[static_cast<size_t>(0.5 * (data.size() - 1))];
+static double p50(const std::vector<double> &v) {
+  std::vector<double> data = v;
+  std::sort(data.begin(), data.end());
+  if (data.empty())
+    return 0.0;
+  return data[static_cast<size_t>(0.5 * (data.size() - 1))];
 }
 
-static double p99(const std::vector<double>& v) {
-    std::vector<double> data = v;
-    std::sort(data.begin(), data.end());
-    if (data.empty()) return 0.0;
-    return data[static_cast<size_t>(0.99 * (data.size() - 1))];
+static double p99(const std::vector<double> &v) {
+  std::vector<double> data = v;
+  std::sort(data.begin(), data.end());
+  if (data.empty())
+    return 0.0;
+  return data[static_cast<size_t>(0.99 * (data.size() - 1))];
 }
 
-static double p99_9(const std::vector<double>& v) {
-    std::vector<double> data = v;
-    std::sort(data.begin(), data.end());
-    if (data.empty()) return 0.0;
-    return data[static_cast<size_t>(0.999 * (data.size() - 1))];
+static double p99_9(const std::vector<double> &v) {
+  std::vector<double> data = v;
+  std::sort(data.begin(), data.end());
+  if (data.empty())
+    return 0.0;
+  return data[static_cast<size_t>(0.999 * (data.size() - 1))];
 }
 
 // buy/sell into empty book
@@ -43,11 +46,6 @@ static void BM_BuyEmptyBook(benchmark::State &state) {
     state.ResumeTiming();
   }
 }
-BENCHMARK(BM_BuyEmptyBook)
-    ->Repetitions(100)
-    ->ComputeStatistics("p50", p50)
-    ->ComputeStatistics("p99", p99)
-    ->ComputeStatistics("p99.9", p99_9);
 
 static void BM_SellEmptyBook(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -65,7 +63,6 @@ static void BM_SellEmptyBook(benchmark::State &state) {
     state.ResumeTiming();
   }
 }
-BENCHMARK(BM_SellEmptyBook);
 
 // Taker full-fill: buy/sell crossing one level single fill
 
@@ -87,7 +84,6 @@ static void BM_BuyCrossSingleLevel(benchmark::State &state) {
     state.ResumeTiming();
   }
 };
-BENCHMARK(BM_BuyCrossSingleLevel);
 
 static void BM_SellCrossSingleLevel(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -107,7 +103,6 @@ static void BM_SellCrossSingleLevel(benchmark::State &state) {
     state.ResumeTiming();
   }
 };
-BENCHMARK(BM_SellCrossSingleLevel);
 
 // Taker multi-level walk: buy/sell sweeping 3 ask levels
 static void BM_BuyCrossThreeLevels(benchmark::State &state) {
@@ -137,7 +132,6 @@ static void BM_BuyCrossThreeLevels(benchmark::State &state) {
     state.ResumeTiming();
   }
 };
-BENCHMARK(BM_BuyCrossThreeLevels);
 
 static void BM_SellCrossThreeLevels(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -164,7 +158,6 @@ static void BM_SellCrossThreeLevels(benchmark::State &state) {
     state.ResumeTiming();
   }
 };
-BENCHMARK(BM_SellCrossThreeLevels);
 
 // Partial fill: taker order partially consumed, remainder rests
 static void BM_BuyPartialFill(benchmark::State &state) {
@@ -192,7 +185,6 @@ static void BM_BuyPartialFill(benchmark::State &state) {
     buyId += 2;
   }
 };
-BENCHMARK(BM_BuyPartialFill);
 
 static void BM_SellPartialFill(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -218,7 +210,6 @@ static void BM_SellPartialFill(benchmark::State &state) {
     sellId += 2;
   }
 };
-BENCHMARK(BM_SellPartialFill);
 
 // Cancel: order removed but price level stays (other order resting at price)
 static void BM_CancelBuyKeepLevel(benchmark::State &state) {
@@ -239,7 +230,6 @@ static void BM_CancelBuyKeepLevel(benchmark::State &state) {
     ++tradeId;
   }
 };
-BENCHMARK(BM_CancelBuyKeepLevel);
 
 static void BM_CancelSellKeepLevel(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -261,7 +251,6 @@ static void BM_CancelSellKeepLevel(benchmark::State &state) {
     ++tradeId;
   }
 };
-BENCHMARK(BM_CancelSellKeepLevel);
 
 // Cancel: cancel empties the price level (level erased from map)
 static void BM_CancelBuyEmptyLevel(benchmark::State &state) {
@@ -279,7 +268,6 @@ static void BM_CancelBuyEmptyLevel(benchmark::State &state) {
     ++tradeId;
   }
 };
-BENCHMARK(BM_CancelBuyEmptyLevel);
 
 static void BM_CancelSellEmptyLevel(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -297,4 +285,66 @@ static void BM_CancelSellEmptyLevel(benchmark::State &state) {
     ++tradeId;
   }
 };
-BENCHMARK(BM_CancelSellEmptyLevel);
+
+BENCHMARK(BM_BuyEmptyBook)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+
+BENCHMARK(BM_SellEmptyBook)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+
+BENCHMARK(BM_BuyCrossSingleLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_SellCrossSingleLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_BuyCrossThreeLevels)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_SellCrossThreeLevels)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_BuyPartialFill)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_SellPartialFill)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_CancelBuyKeepLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_CancelSellKeepLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_CancelBuyEmptyLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
+BENCHMARK(BM_CancelSellEmptyLevel)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);

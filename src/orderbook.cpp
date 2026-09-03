@@ -23,8 +23,8 @@ bool Orderbook::buy(Trader *trader, int price, int quantity) {
   }
 
   traderRegistry[trader->getId()] = trader;
-
   buyOrderMap[price].total_quantity += quantity;
+
   int trade_id = currTradeId++;
   // emplace returns <iterator to inserted element, bool inserted>
   auto [it, inserted] = buyOrderMap[price].order_queue.emplace(
@@ -59,9 +59,9 @@ bool Orderbook::sell(Trader *trader, int price, int quantity) {
   }
 
   traderRegistry[trader->getId()] = trader;
+  sellOrderMap[price].total_quantity += quantity;
 
   trader->changeInventoryAmount(this, -quantity);
-  sellOrderMap[price].total_quantity += quantity;
   int trade_id = currTradeId++;
   auto [it, inserted] = sellOrderMap[price].order_queue.emplace(
       trade_id, Order(trade_id, quantity, trader->getId(), price));

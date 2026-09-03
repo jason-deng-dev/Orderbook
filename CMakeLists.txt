@@ -45,7 +45,7 @@ target_link_libraries(orderbook_test PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(orderbook_test orders_test trader_test)
+gtest_discover_tests(orderbook_test)
 
 
 

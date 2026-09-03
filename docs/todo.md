@@ -53,7 +53,8 @@
   - [x] handleFill should return false if bestBidPrice or bestAskPrice == -1, since missing an order
   - [x] negative amount for buy/sell and cancelBuy/cancelSell handling
   - [x] when handleFill, if a bid or ask is fully filled, need to also remove that bid/ask from buyer/seller 
-- [ ] Benchmarks
+- [x] Benchmarks
   - [x] buy/sell/handleFill remove std::cout/std::cerr
-  - [ ] ISSUE: O(N) for Trader::removeOrder 
+  - [x] ISSUE: O(N) for Trader::removeOrder 
+- [ ] Find test coverage
 

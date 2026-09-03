@@ -1,7 +1,31 @@
 #include "orderbook.h"
 #include "orders.h"
 #include "trader.h"
+#include <algorithm>
 #include <benchmark/benchmark.h>
+#include <cmath>
+#include <vector>
+
+static double p50(const std::vector<double>& v) {
+    std::vector<double> data = v;
+    std::sort(data.begin(), data.end());
+    if (data.empty()) return 0.0;
+    return data[static_cast<size_t>(0.5 * (data.size() - 1))];
+}
+
+static double p99(const std::vector<double>& v) {
+    std::vector<double> data = v;
+    std::sort(data.begin(), data.end());
+    if (data.empty()) return 0.0;
+    return data[static_cast<size_t>(0.99 * (data.size() - 1))];
+}
+
+static double p99_9(const std::vector<double>& v) {
+    std::vector<double> data = v;
+    std::sort(data.begin(), data.end());
+    if (data.empty()) return 0.0;
+    return data[static_cast<size_t>(0.999 * (data.size() - 1))];
+}
 
 // buy/sell into empty book
 static void BM_BuyEmptyBook(benchmark::State &state) {
@@ -19,7 +43,11 @@ static void BM_BuyEmptyBook(benchmark::State &state) {
     state.ResumeTiming();
   }
 }
-BENCHMARK(BM_BuyEmptyBook);
+BENCHMARK(BM_BuyEmptyBook)
+    ->Repetitions(100)
+    ->ComputeStatistics("p50", p50)
+    ->ComputeStatistics("p99", p99)
+    ->ComputeStatistics("p99.9", p99_9);
 
 static void BM_SellEmptyBook(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -33,13 +61,11 @@ static void BM_SellEmptyBook(benchmark::State &state) {
 
     // End of timed section
     state.PauseTiming();
-    ob.cancelSell(&t, currTradeId++, 100, 10)  ;
+    ob.cancelSell(&t, currTradeId++, 100, 10);
     state.ResumeTiming();
   }
 }
 BENCHMARK(BM_SellEmptyBook);
-
-
 
 // Taker full-fill: buy/sell crossing one level single fill
 
@@ -83,8 +109,6 @@ static void BM_SellCrossSingleLevel(benchmark::State &state) {
 };
 BENCHMARK(BM_SellCrossSingleLevel);
 
-
-
 // Taker multi-level walk: buy/sell sweeping 3 ask levels
 static void BM_BuyCrossThreeLevels(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -98,7 +122,8 @@ static void BM_BuyCrossThreeLevels(benchmark::State &state) {
   ob.sell(&s, 30, 3);
 
   for (auto _ : state) {
-    // sweeps all 3 levels in one op: fills at 10/20/30, refunds 25/15/5 per unit
+    // sweeps all 3 levels in one op: fills at 10/20/30, refunds 25/15/5 per
+    // unit
     ob.buy(&b, 35, 9);
 
     state.PauseTiming();
@@ -141,8 +166,6 @@ static void BM_SellCrossThreeLevels(benchmark::State &state) {
 };
 BENCHMARK(BM_SellCrossThreeLevels);
 
-
-
 // Partial fill: taker order partially consumed, remainder rests
 static void BM_BuyPartialFill(benchmark::State &state) {
   Orderbook ob("stock1");
@@ -173,8 +196,8 @@ BENCHMARK(BM_BuyPartialFill);
 
 static void BM_SellPartialFill(benchmark::State &state) {
   Orderbook ob("stock1");
-  Trader rb("rb", 100);   // resting buyer
-  Trader ts("ts", 0);     // taker seller
+  Trader rb("rb", 100); // resting buyer
+  Trader ts("ts", 0);   // taker seller
   ts.changeInventoryAmount(&ob, 100);
   // resting bid 3 @ 10 (id 0)
   ob.buy(&rb, 10, 3);
@@ -189,15 +212,13 @@ static void BM_SellPartialFill(benchmark::State &state) {
     ob.cancelSell(&ts, sellId, 10, 2);
     rb.changeBalance(30);
     ts.changeBalance(-30);
-    ts.changeInventoryAmount(&ob, 3);   // restock the 3 units actually sold
+    ts.changeInventoryAmount(&ob, 3); // restock the 3 units actually sold
     ob.buy(&rb, 10, 3);
     state.ResumeTiming();
     sellId += 2;
   }
 };
 BENCHMARK(BM_SellPartialFill);
-
-
 
 // Cancel: order removed but price level stays (other order resting at price)
 static void BM_CancelBuyKeepLevel(benchmark::State &state) {

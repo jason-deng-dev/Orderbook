@@ -56,5 +56,18 @@
 - [x] Benchmarks
   - [x] buy/sell/handleFill remove std::cout/std::cerr
   - [x] ISSUE: O(N) for Trader::removeOrder 
-- [ ] Find test coverage
+- [ ] Refactor to use flat, array-indexed structure 
+  - [ ] Source https://www.youtube.com/watch?v=sX2nF1fW7kI&t=12s (https://github.com/CppCon/CppCon2024/blob/main/Presentations/When_Nanoseconds_Matter.pdf)
+- [ ] test performance difference in implementations on 1M order backtest
+  - [ ] create 1M messages with realistic distribution of Add, Modify, Cancel orders (price clustered around a mid-price)
+  - [ ] have both engines consume the messages
+- [ ] have both implementations, and use same compiler fags when testing
+```c
+#ifdef USE_FLAT_ARRAY
+  using PriceLadder = FlatArrayLadder;
+#else
+  using PriceLadder = MapLadder;
+#endif
+```
+- [ ] benchmark via so also capture latency data and report p50, p99, p99.9 
 

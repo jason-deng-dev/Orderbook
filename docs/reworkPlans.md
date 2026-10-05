@@ -270,13 +270,37 @@ How do we go faster from here (Linear search)
 
 The best implemenation we can find and is the fastest is linear search
 ![alt text](image-8.png)
+- very narrow and no tail
 
 # Principle 5 : Mechanical sympathy
 - you want algorithm that are in harmony with your hardware
 - which is what linear search is doing perfectly
   - great for cache locality, the way you access memory, branches ...
 
+# Lambda, Functor vs std::function
+```c
+OrderBook::OrderBook() :
+    mBidsCompare([](const std::pair<Price, Volume>& p, Price price) { return p.first < price; }),
+    mAsksCompare([](const std::pair<Price, Volume>& p, Price price) { return p.first > price; })
+{}
 
+void AddOrder(Side side, Price price, Volume volume)
+{
+    if (side == Side::Bid)
+    {
+        return AddOrder(mBidLevels, price, volume, mBidsCompare);
+    }
+    else
+    {
+        return AddOrder(mAskLevels, price, volume, mAsksCompare);
+    }
+}
+```
+Lambda and Functor are awesome, because the compiler knows the type, so we can really go far into the optimization
+- if you were to use std::function (passing it in constructor)
+  - the consequences would be huge for the performance of this data structure
+  - you lose type information (std::function has type erasure) so the code generated would be very different
+  - performance would be terrible
 
 # Refactor plan
 

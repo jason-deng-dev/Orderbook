@@ -103,6 +103,7 @@ important to look at latency distribution on the whole Orderbook
 Yellow distribution is bit of a lie
 
 # Principles 1 : Most of the time you don't want node containers
+
 - Blue distribution is the true distribution
   - between the orderbook operations, add some memory allocations
   - not to do much with them, but to randomize the heap
@@ -127,11 +128,11 @@ void AddOrder(Side side, Price price, Volume volume) {
 
 template <class T, class Compare>
 void AddOrder(T& levels, Price price, Volume volume, Compare comp) {
-  auto it = std::lower_bound(levels.begin(), levels.end(), price, 
+  auto it = std::lower_bound(levels.begin(), levels.end(), price,
             [comp](const auto& p, Price price) { return comp(p.first, price);});
   if (it != levels.end() && it->first == price) {
     it -> second += volume;
-  else 
+  else
     levels.insert(it, {price, volume});
 }
 }
@@ -154,12 +155,14 @@ DeleteOrder:
 ![alt text](image-2.png)
 
 This latency distribution is just fine (not good)
+
 - has a fat tail
 
-
 # Principles 2 : Understanding your problem (By looking at data!)
+
 Where does this tail come from? Need to look at data
 ![alt text](image-3.png)
+
 - looking at the distributions of the data levels
 - the actions are happening on the top of our book (highest for bid, lowest for ask)
 - what this means for data structure
@@ -167,14 +170,17 @@ Where does this tail come from? Need to look at data
   - as a result we are going to shift continously our elements in vector in memory all the time
 
 # Principles 3 : Hand tailored (specialized) algorithms are key to achieve performance
+
 Solution: "reverse" Vector
+
 - "best" price" or "top" is at end of collection
 - minimizes number of copies
+
 ```c
 void AddOrder(Side side, Price price, Volume){
-  if (side == Side::Bid) 
+  if (side == Side::Bid)
     return AddOrder(bidLevels, price, volume, std::less<Price>());
-  else 
+  else
     return AddOrder(askLevels, price, volume, std::greater<Price>());
 }
 
@@ -182,13 +188,14 @@ auto GetBestPrices() const {
   return {mBidLevels.rbegin().first, mAskLevels.rbegin()).first};
 }
 ```
+
 ![alt text](image-4.png)
 Result:
+
 - much nicer latency distribution, the tail is nearly completely gone
 
-
-
 # perf usage
+
 ```c
 void RunPerf(){
   pid_t pid = fork();
@@ -206,24 +213,30 @@ void InitAndRunBenchmark() {
   RunBenchmark();
 }
 ```
-- approach won't work for a micro benchmark / if benchmark really short 
+
+- approach won't work for a micro benchmark / if benchmark really short
 - don't want to measure anything about the initalization phase
 - First perf measurement should never be too specific
+
 ```bash
 perf stat -I 10000 -M Frontend_Bound, Backend_Bound, Bad_Speculation, Retiring -p pid
 ```
+
 ![alt text](image-5.png)
+
 - from Intel, top down micro architecture analysis method
 - there is very little overlap between them, and not missing anything on what your CPU is doing
 
 in the best case:
+
 - every single instruction per cycle is going to be retired (100%)
 - no bad speculation (usually caused by branch misprediction)
 - no front end bound (around decoding instruction)
 - no back end bound (around memory)
 
 Results:
-``` 
+
+```
 # counts          unit                                                        events
 43194329517       de_src_op_disp.all:u                           #    25.0 %  bad_speculation
 139867893         ls_not_halted_cyc:u                            #    26.4 %  retiring
@@ -233,16 +246,20 @@ Results:
 2580129495        de_no_dispatch_per_slot.no_ops_from_frontend:u #    30.6 %  frontend_bound
 1404946340        ls_not_halted_cyc:u
 ```
+
 - 25% bad_speclation is very high
 
 ```bash
 perf record -g -p <pid>
 ```
+
 ![alt text](image-6.png)
+
 - what we see is that more than 30% of CPU time is spent on 2 conditional jump in std::lower_bound
   - its a binary search, CPU predictor is gonna struggle with the updates we have
 
 # Solution: Branchless binary search
+
 ```c
 template <class ForwardIt, class T, class Compare>
 ForwardIt branchless_lower_bound(ForwardIt first, ForwardIt last, const T& value, Compare comp)
@@ -257,27 +274,33 @@ ForwardIt branchless_lower_bound(ForwardIt first, ForwardIt last, const T& value
     return first;
 }
 ```
+
 - difference from traditional binary search is that there is no early exit anymore
 - going to go through the entire collection no matter what, touching more memory
 
 ![alt text](image-7.png)
+
 - got a nice speed up
 - again have 2 peaks in our distribution
   - speculate that its due to branchless binary search is tounching more memory
 
-#  Principle 4 : Simplicity is the ultimate sophistication
+# Principle 4 : Simplicity is the ultimate sophistication
+
 How do we go faster from here (Linear search)
 
 The best implemenation we can find and is the fastest is linear search
 ![alt text](image-8.png)
+
 - very narrow and no tail
 
 # Principle 5 : Mechanical sympathy
+
 - you want algorithm that are in harmony with your hardware
 - which is what linear search is doing perfectly
   - great for cache locality, the way you access memory, branches ...
 
 # Lambda, Functor vs std::function
+
 ```c
 OrderBook::OrderBook() :
     mBidsCompare([](const std::pair<Price, Volume>& p, Price price) { return p.first < price; }),
@@ -296,11 +319,15 @@ void AddOrder(Side side, Price price, Volume volume)
     }
 }
 ```
+
 Lambda and Functor are awesome, because the compiler knows the type, so we can really go far into the optimization
+
 - if you were to use std::function (passing it in constructor)
   - the consequences would be huge for the performance of this data structure
   - you lose type information (std::function has type erasure) so the code generated would be very different
   - performance would be terrible
+
+
 
 # Refactor plan
 

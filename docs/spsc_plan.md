@@ -1,4 +1,3 @@
-
 # Principle #6: True efficiency is found not in the layers of complexity we add, but the unnecessary layers we remove
 
 ![alt text](images/image-9.png)

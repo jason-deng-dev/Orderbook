@@ -91,7 +91,7 @@ DeleteOrder: amortized constant
 
 - std::map iterators are stable, meaning we can store it in our order data (in hash table)
 
-![alt text](image-1.png)
+![alt text](images/image-1.png)
 important to look at latency distribution on the whole Orderbook
 
 - if just looking a few percentile or median average or min/max you'd be missing some information
@@ -152,7 +152,7 @@ DeleteOrder:
 - log(N) if price level exists
 - log(N) + N if new price level is inserted
 
-![alt text](image-2.png)
+![alt text](images/image-2.png)
 
 This latency distribution is just fine (not good)
 
@@ -161,7 +161,7 @@ This latency distribution is just fine (not good)
 # Principles 2 : Understanding your problem (By looking at data!)
 
 Where does this tail come from? Need to look at data
-![alt text](image-3.png)
+![alt text](images/image-3.png)
 
 - looking at the distributions of the data levels
 - the actions are happening on the top of our book (highest for bid, lowest for ask)
@@ -189,7 +189,7 @@ auto GetBestPrices() const {
 }
 ```
 
-![alt text](image-4.png)
+![alt text](images/image-4.png)
 Result:
 
 - much nicer latency distribution, the tail is nearly completely gone
@@ -222,7 +222,7 @@ void InitAndRunBenchmark() {
 perf stat -I 10000 -M Frontend_Bound, Backend_Bound, Bad_Speculation, Retiring -p pid
 ```
 
-![alt text](image-5.png)
+![alt text](images/image-5.png)
 
 - from Intel, top down micro architecture analysis method
 - there is very little overlap between them, and not missing anything on what your CPU is doing
@@ -253,7 +253,7 @@ Results:
 perf record -g -p <pid>
 ```
 
-![alt text](image-6.png)
+![alt text](images/image-6.png)
 
 - what we see is that more than 30% of CPU time is spent on 2 conditional jump in std::lower_bound
   - its a binary search, CPU predictor is gonna struggle with the updates we have
@@ -278,7 +278,7 @@ ForwardIt branchless_lower_bound(ForwardIt first, ForwardIt last, const T& value
 - difference from traditional binary search is that there is no early exit anymore
 - going to go through the entire collection no matter what, touching more memory
 
-![alt text](image-7.png)
+![alt text](images/image-7.png)
 
 - got a nice speed up
 - again have 2 peaks in our distribution
@@ -289,7 +289,7 @@ ForwardIt branchless_lower_bound(ForwardIt first, ForwardIt last, const T& value
 How do we go faster from here (Linear search)
 
 The best implemenation we can find and is the fastest is linear search
-![alt text](image-8.png)
+![alt text](images/image-8.png)
 
 - very narrow and no tail
 

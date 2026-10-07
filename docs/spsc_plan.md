@@ -1,7 +1,7 @@
 
 # Principle #6: True efficiency is found not in the layers of complexity we add, but the unnecessary layers we remove
 
-![alt text](image-9.png)
+![alt text](images/image-9.png)
 
 # Shared Memory:
 
@@ -48,18 +48,18 @@ Type Support? : PODs
 
 # FastQueue
 
-![alt text](image-10.png)
+![alt text](images/image-10.png)
 2 counters:
 
 - write counter / read counter
 - both modified by the producer (producer has no idea if there is a consumer or not)
 - consumers only read the counters (they don't modify them)
 - these counters have the same value, they point to the same element when there is no write operation
-  ![alt text](image-11.png)
+  ![alt text](images/image-11.png)
 - when a write operation happening, the write counter is first advanced
 - then you copy your data
 - then you advance your read counter
-  ![alt text](image-12.png)
+  ![alt text](images/image-12.png)
 
 ```c
 struct FastQueue

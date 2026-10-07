@@ -62,12 +62,5 @@
   - [ ] create 1M messages with realistic distribution of Add, Modify, Cancel orders (price clustered around a mid-price)
   - [ ] have both engines consume the messages
 - [ ] have both implementations, and use same compiler fags when testing
-```c
-#ifdef USE_FLAT_ARRAY
-  using PriceLadder = FlatArrayLadder;
-#else
-  using PriceLadder = MapLadder;
-#endif
-```
 - [ ] benchmark via so also capture latency data and report p50, p99, p99.9 
 

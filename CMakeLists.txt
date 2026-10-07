@@ -16,8 +16,6 @@ FetchContent_MakeAvailable(googletest)
 
 add_library(orderbook_core 
   src/orderbook.cpp
-  src/orders.cpp
-  src/trader.cpp
 )
 
 

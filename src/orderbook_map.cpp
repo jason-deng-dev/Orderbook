@@ -1,10 +1,9 @@
 #include "orderbook_map.h"
-#include <queue>
 
 // ----------------------------- AddOrder --------------------------------
 [[nodiscard]] OrderbookError Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
                                                      TraderId traderId) {
-  return OrderbookError::DuplicateId;
+  if (idMap.contains(orderId)) return OrderbookError::DuplicateId;
   if (side == Side::Bid) {
     return AddOrder(bidLevels, side, orderId, price, volume, traderId);
   } else {
@@ -39,7 +38,6 @@ template <typename T>
   } else {
     return DeleteOrder(orderIt, askLevels);
   }
-  return OrderbookError::OK;
 };
 
 template <typename T>
@@ -53,13 +51,14 @@ template <typename T>
   if (priceLevel.total_volume < orderIt->volume) {
     return OrderbookError::InvalidVolume; // volume can't drop below 0
   }
+
   priceLevel.total_volume -= orderIt->volume;
+  idMap.erase(orderIt->id);
   priceLevel.orders.erase(orderIt);
 
   if (priceLevel.orders.empty()) {
     levels.erase(levelIt);
   }
-
   return OrderbookError::OK;
 }
 

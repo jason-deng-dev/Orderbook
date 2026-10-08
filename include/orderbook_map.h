@@ -26,7 +26,7 @@ public:
   }
 
   // price levels
-  [[nodiscard]] std::optional<Price> GetBest() const {
+  [[nodiscard]] std::optional<Price> GetBestBid() const {
     if (bidLevels.empty()) {
       return std::nullopt;
     }
@@ -37,7 +37,7 @@ public:
     if (bidLevels.empty()) {
       return std::nullopt;
     }
-    return bidLevels.begin()->first;
+    return askLevels.begin()->first;
   };
 
   [[nodiscard]] Volume GetTotalVolumeAtPrice(Price price, Side side) const {

@@ -22,9 +22,7 @@ template <typename T>
   priceLevel.total_volume += volume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
-
-
-  return {OrderStatus::Rejected, OrderbookError::DuplicateId, 0, volume};
+  return {OrderStatus::Resting, OrderbookError::OK, 0, volume};
 }
 
 // ----------------------------- DeleteOrder --------------------------------

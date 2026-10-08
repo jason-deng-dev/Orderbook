@@ -1,0 +1,30 @@
+## Project layout
+
+| Path | Contents |
+|---|---|
+| `include/` | headers — `Orderbook`, `Trader`, `Order`/`Trade` |
+| `src/` | implementation |
+| `tests/` | gtest suites |
+| `benchmarks/` | Google Benchmark harness |
+| `` | design rationale, benchmark methodology + results |
+
+## Docs
+
+- [`design-rational.md`](design-rational.md) — design decisions and build-through process
+- [`benchmark.md`](benchmark.md) — methodology, measured results, interpretation (incl. root-cause of the sell-vs-buy latency asymmetry)
+- [`benchmark_results.md`](benchmark_results.md) — raw per-run output
+
+## Results snapshot
+
+Single-threaded, steady-state, `-O3 -DNDEBUG`, AMD Ryzen 7 9800X3D, clang++ 22. Google Benchmark v1.9.5, 100 repetitions. Latency in ns; buy and sell sides shown separately.
+
+| op | buy p50 | buy p99 | sell p50 | sell p99 |
+|---|---|---|---|---|
+| add into empty book | 142 | 145 | 147 | 150 |
+| taker fill, 1 level | 234 | 239 | 243 | 248 |
+| taker sweep, 3 levels | 357 | 364 | 369 | 376 |
+| partial fill, remainder rests | 202 | 207 | 210 | 217 |
+| cancel, price level kept | 125 | 126 | 129 | 131 |
+| cancel, price level erased | 126 | 128 | 133 | 134 |
+
+p99 within ~3% of p50 across all ops.  — full analysis in [`benchmark.md`](benchmark.md).

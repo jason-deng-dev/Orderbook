@@ -5,8 +5,7 @@
 #include <functional>
 #include <map>
 
-
-enum class OrderbookError { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice, PriceLevelNotFound};
+enum class OrderbookError { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice, PriceLevelNotFound };
 
 class Orderbook_Map {
 public:
@@ -16,13 +15,14 @@ public:
 
 private:
   template <typename T>
-  [[nodiscard]] OrderbookError AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume, TraderId traderId);
+  [[nodiscard]] OrderbookError AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
+                                        TraderId traderId);
 
   template <typename T>
   [[nodiscard]] OrderbookError DeleteOrder(std::list<Order>::iterator orderIt, T &levels);
 
   template <typename T>
-  [[nodiscard]] OrderbookError ModifyOrder();
+  [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
 
   std::map<Price, PriceLevel, std::greater<Price>> bidLevels;
 

@@ -4,7 +4,10 @@
 		{
 			"name": "default",
 			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/build"
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+			}
 		}
 	],
 	"buildPresets": [
@@ -14,4 +17,3 @@
 		}
 	]
 }
-

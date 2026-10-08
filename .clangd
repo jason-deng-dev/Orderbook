@@ -1,2 +1,5 @@
 CompileFlags:
   Add: [-std=c++23]
+  Remove: [-fmodules-ts, '-fdeps-format=*', '-fmodule-mapper=*']  
+  
+CompilationDatabase: build/

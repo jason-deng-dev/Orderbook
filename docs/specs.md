@@ -1,34 +1,10 @@
 # Exception handling
-
-For "Imposible" Logic bugs 
-- use Standard assert `<cassert>`
-- when checking for bug in own code (eg: "this pointer should never be null", "this list should never be empty here" ...)
-Why: when compile with `-O3 -DNDEBUG preprocessor replaces assert(...) with ((void)0), so CPU doesn't even know it's there
+Have orderbook API return status code to represent success / failure
 ```c
-void Orderbook::match(Order& incoming) {
-  assert(!mBidLevels.empty() && "Bid ladder should not be empty here!");
-  ...
-}
+[[nodiscard]] OrderbookError AddOrder(...);
 ```
+- so that call sites have to check the success of the operation
 
-For Bad Data from Network (Data feeder)
-- If checking for duplicate Order ID or invalid price from client, not bug in code, can't use `assert` sinece can't crash engine in production for bad input
-- instead use C++20's `[[unlikely]]` attribute
-- it tells CPU's branch predictor "assume this conditiion is false 99.9% of the time, Keep the 'happy path' code in the fast instruction cache"
-```c
-#include <expected>
-
-std::expected<ExecutionReport, OrderError> Orderbook::processOrder(const Order& order) {
-    
-    // The [[unlikely]] hint tells the CPU to optimize for the case where 
-    // the order ID is NOT found. This prevents branch misprediction penalties.
-    if (idMap.contains(order.id)) [[unlikely]] {
-        return std::unexpected(OrderError::DuplicateOrderId);
-    }
-
-    // ... rest of the hot path ...
-}
-```
 
 # Benchmark
 During benchmark store timestamp in array indexed by OrderId

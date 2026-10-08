@@ -1,1 +1,3 @@
-- [ ] API for orderbook_map done
+- [x] API for orderbook_map done
+  - [x] AddOrder
+  - [x] DeleteOrder

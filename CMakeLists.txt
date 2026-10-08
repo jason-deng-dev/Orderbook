@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 4.3)
 project(Orderbook)
  
 set(CMAKE_CXX_STANDARD 23)
-# make standard required
 set(CMAKE_CXX_STANDARD_REQUIRED ON) 
 
 include(FetchContent)
@@ -15,10 +14,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 add_library(orderbook_core 
-  src/orderbook.cpp
+  src/orderbook_map.cpp
+  src/orderbook_vector.cpp
 )
-
-
 
 # tells CMake compile every source file in orderbook_core with include/ added to compiler's search path
 target_include_directories(orderbook_core PUBLIC include)

@@ -29,7 +29,7 @@ template <typename T>
 [[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(OrderId orderId) {
   auto mapIt = idMap.find(orderId);
 
-  if (mapIt != idMap.end()) {
+  if (mapIt == idMap.end()) {
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
@@ -44,24 +44,35 @@ template <typename T>
 
 template <typename T>
 [[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(std::list<Order>::iterator orderIt, T &levels) {
-  if (levels.contains(orderIt->price)) {
+  auto levelIt = levels.find(orderIt->price);
+  if (levelIt == levels.end()) {
     return OrderbookError::PriceLevelNotFound;
   }
-  auto &priceLevel = levels.at(orderIt->price);
+  PriceLevel &priceLevel = levelIt->second;
+
   if (priceLevel.total_volume < orderIt->volume) {
     return OrderbookError::InvalidVolume; // volume can't drop below 0
   }
   priceLevel.total_volume -= orderIt->volume;
   priceLevel.orders.erase(orderIt);
+
+  if (priceLevel.orders.empty()) {
+    levels.erase(levelIt);
+  }
+
   return OrderbookError::OK;
 }
 
 // ----------------------------- ModifyOrder --------------------------------
 
 [[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(OrderId orderId, Volume newVolume) {
+  if (newVolume == 0) {
+    return DeleteOrder(orderId);
+  }
+
   auto mapIt = idMap.find(orderId);
 
-  if (mapIt != idMap.end()) {
+  if (mapIt == idMap.end()) {
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
@@ -79,10 +90,11 @@ template <typename T>
 template <typename T>
 [[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(std::list<Order>::iterator orderIt, T &levels,
                                                         Volume newVolume) {
-  if (levels.contains(orderIt->price)) {
+  auto levelIt = levels.find(orderIt->price);
+  if (levelIt == levels.end()) {
     return OrderbookError::PriceLevelNotFound;
   }
-  auto &priceLevel = levels.at(orderIt->price);
+  PriceLevel &priceLevel = levelIt->second;
 
   Volume volumeChange = newVolume - orderIt->volume;
 

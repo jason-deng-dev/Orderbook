@@ -6,13 +6,30 @@
 #include <map>
 #include <optional>
 
-
 class Orderbook_Map {
 public:
   [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);
 
+private:
+  template <typename T>
+  [[nodiscard]] MatchResult AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
+                                     TraderId traderId);
+  template <typename T>
+  [[nodiscard]] OrderbookError DeleteOrder(std::list<Order>::iterator orderIt, T &levels);
+  template <typename T>
+  [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
+
+  [[nodiscard]] MatchResult HandleFill(Order &order);
+
+  std::map<Price, PriceLevel, std::greater<Price>> bidLevels;
+
+  std::map<Price, PriceLevel, std::less<Price>> askLevels;
+
+  std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
+
+public:
   // --- getters ---
   // idMap
   [[nodiscard]] bool HasOrder(OrderId orderId) const { return idMap.contains(orderId); }
@@ -60,7 +77,7 @@ public:
     }
   };
 
-  // overall book state  
+  // overall book state
   [[nodiscard]] size_t GetTotalOrderCount() const {
     size_t orderCount = 0;
     for (auto &[price, priceLevel] : bidLevels) {
@@ -70,23 +87,5 @@ public:
       orderCount += priceLevel.orders.size();
     }
     return orderCount;
-
   };
-
-private:
-  template <typename T>
-  [[nodiscard]] MatchResult AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
-                                        TraderId traderId);
-
-  template <typename T>
-  [[nodiscard]] OrderbookError DeleteOrder(std::list<Order>::iterator orderIt, T &levels);
-
-  template <typename T>
-  [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
-
-  std::map<Price, PriceLevel, std::greater<Price>> bidLevels;
-
-  std::map<Price, PriceLevel, std::less<Price>> askLevels;
-
-  std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
 };

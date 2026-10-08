@@ -1,10 +1,12 @@
 #include "orderbook_map.h"
 #include "types.h"
+#include <algorithm>
 #include <cassert>
+#include <optional>
 
 // ----------------------------- AddOrder --------------------------------
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
-                                                     TraderId traderId) {
+                                                  TraderId traderId) {
   if (idMap.contains(orderId)) return {OrderStatus::Rejected, OrderbookError::DuplicateId, 0, volume};
   if (side == Side::Bid) {
     return AddOrder(bidLevels, side, orderId, price, volume, traderId);
@@ -15,14 +17,14 @@
 
 template <typename T>
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
-                                                     TraderId traderId) {
+                                                  TraderId traderId) {
   Order newOrder{side, orderId, traderId, price, volume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
   priceLevel.total_volume += volume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
-  return {OrderStatus::Resting, OrderbookError::OK, 0, volume};
+  return HandleFill(*orderIt);
 }
 
 // ----------------------------- DeleteOrder --------------------------------
@@ -102,4 +104,108 @@ template <typename T>
   priceLevel.total_volume += volumeChange;
   orderIt->volume = newVolume;
   return OrderbookError::OK;
+}
+
+// ----------------------------- HandleFill --------------------------------
+
+[[nodiscard]] MatchResult Orderbook_Map::HandleFill(Order &incomingOrder) {
+  Volume initialVolume = incomingOrder.volume;
+  Volume remainingVolume = incomingOrder.volume;
+  Volume filledVolume = 0;
+
+  if (incomingOrder.side == Side::Bid) {
+    auto bestAskPriceOpt = GetBestAsk();
+    if (!bestAskPriceOpt.has_value() || *bestAskPriceOpt > incomingOrder.price) {
+      return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume}; // no crossing liquidity => order rests
+    }
+
+    // iterate through askLevels while still have volume to fill
+    while (remainingVolume > 0 && !askLevels.empty()) {
+      auto bestAskIt = askLevels.begin();
+      Price bestAskPrice = bestAskIt->first;
+
+      // did price move and stop crossing
+      if (incomingOrder.price < bestAskPrice) {
+        break;
+      }
+
+      PriceLevel &askLevel = bestAskIt->second;
+
+      // match against resting orders in price level
+      while (remainingVolume > 0 && !askLevel.orders.empty()) {
+        auto restingOrderIt = askLevel.orders.begin();
+        Order &restingOrder = *restingOrderIt;
+
+        Volume matchQty = std::min(remainingVolume, restingOrder.volume);
+
+        filledVolume += matchQty;
+        remainingVolume -= matchQty;
+
+        restingOrder.volume -= matchQty;
+        askLevel.total_volume -= matchQty;
+
+        if (restingOrder.volume == 0) {
+          // clean up fully filled resting orders
+          idMap.erase(restingOrder.id);
+          askLevel.orders.erase(restingOrderIt);
+        } else {
+          // resting order was only partially filled, meaning incoming order was filled
+          break;
+        }
+      }
+      if (askLevel.orders.empty()) {
+        askLevels.erase(bestAskIt);
+      }
+    }
+  } else {
+    auto bestBidPriceOpt = GetBestBid();
+    if (!bestBidPriceOpt.has_value() || *bestBidPriceOpt < incomingOrder.price) {
+      return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume};
+    }
+
+    while (remainingVolume > 0 && !bidLevels.empty()) {
+      auto bestBidIt = bidLevels.begin();
+      Price bestBidPrice = bestBidIt->first;
+
+      if (incomingOrder.price > bestBidPrice) {
+        break;
+      }
+
+      PriceLevel &bidLevel = bestBidIt->second;
+
+      while (remainingVolume > 0 && !bidLevel.orders.empty()) {
+        auto restingOrderIt = bidLevel.orders.begin();
+        Order &restingOrder = *restingOrderIt;
+
+        Volume matchQty = std::min(remainingVolume, restingOrder.volume);
+
+        filledVolume += matchQty;
+        remainingVolume -= matchQty;
+
+        restingOrder.volume -= matchQty;
+        bidLevel.total_volume -= matchQty;
+
+        if (restingOrder.volume == 0) {
+          idMap.erase(restingOrder.id);
+          bidLevel.orders.erase(restingOrderIt);
+        } else {
+          break;
+        }
+      }
+      if (bidLevel.orders.empty()) {
+        bidLevels.erase(bestBidIt);
+      }
+    }
+  }
+
+  OrderStatus status;
+  if (filledVolume == 0) {
+    status = OrderStatus::Resting;
+  } else if (remainingVolume == 0) {
+    status = OrderStatus::Filled;
+  } else {
+    status = OrderStatus::PartiallyFilled;
+  }
+
+  return {status, OrderbookError::OK, filledVolume, remainingVolume};
 }

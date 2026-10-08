@@ -6,11 +6,10 @@
 #include <map>
 #include <optional>
 
-enum class OrderbookError { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice, PriceLevelNotFound };
 
 class Orderbook_Map {
 public:
-  [[nodiscard]] OrderbookError AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
+  [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);
 
@@ -76,7 +75,7 @@ public:
 
 private:
   template <typename T>
-  [[nodiscard]] OrderbookError AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
+  [[nodiscard]] MatchResult AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                         TraderId traderId);
 
   template <typename T>

@@ -1,19 +1,20 @@
 #include "orderbook_map.h"
+#include "types.h"
+#include <cassert>
 
 // ----------------------------- AddOrder --------------------------------
-[[nodiscard]] OrderbookError Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
+[[nodiscard]] MatchResult Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
                                                      TraderId traderId) {
-  if (idMap.contains(orderId)) return OrderbookError::DuplicateId;
+  if (idMap.contains(orderId)) return {OrderStatus::Rejected, OrderbookError::DuplicateId, 0, volume};
   if (side == Side::Bid) {
     return AddOrder(bidLevels, side, orderId, price, volume, traderId);
   } else {
     return AddOrder(askLevels, side, orderId, price, volume, traderId);
   }
-  return OrderbookError::OK;
 };
 
 template <typename T>
-[[nodiscard]] OrderbookError Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
+[[nodiscard]] MatchResult Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                                      TraderId traderId) {
   Order newOrder{side, orderId, traderId, price, volume};
   auto [levelIt, inserted] = levels.try_emplace(price);
@@ -21,7 +22,9 @@ template <typename T>
   priceLevel.total_volume += volume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
-  return OrderbookError::OK;
+
+
+  return {OrderStatus::Rejected, OrderbookError::DuplicateId, 0, volume};
 }
 
 // ----------------------------- DeleteOrder --------------------------------
@@ -43,9 +46,8 @@ template <typename T>
 template <typename T>
 [[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(std::list<Order>::iterator orderIt, T &levels) {
   auto levelIt = levels.find(orderIt->price);
-  if (levelIt == levels.end()) {
-    return OrderbookError::PriceLevelNotFound;
-  }
+  assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
+
   PriceLevel &priceLevel = levelIt->second;
 
   if (priceLevel.total_volume < orderIt->volume) {
@@ -90,9 +92,7 @@ template <typename T>
 [[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(std::list<Order>::iterator orderIt, T &levels,
                                                         Volume newVolume) {
   auto levelIt = levels.find(orderIt->price);
-  if (levelIt == levels.end()) {
-    return OrderbookError::PriceLevelNotFound;
-  }
+  assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
   PriceLevel &priceLevel = levelIt->second;
 
   Volume volumeChange = newVolume - orderIt->volume;

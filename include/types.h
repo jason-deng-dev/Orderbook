@@ -14,10 +14,27 @@ struct Order {
   TraderId trader_id;
   Price price;
   Volume volume;
-  
 };
 
 struct PriceLevel {
   Volume total_volume = 0;
   std::list<Order> orders;
+};
+
+
+
+enum class OrderbookError { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice };
+
+enum class OrderStatus {
+  Rejected, 
+  Resting, 
+  PartiallyFilled, 
+  Filled
+};
+
+struct MatchResult {
+  OrderStatus status;
+  OrderbookError error;
+  Volume filledVolume;
+  Volume restingVolume;
 };

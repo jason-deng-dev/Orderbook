@@ -70,10 +70,7 @@ template <typename T>
 
   PriceLevel &priceLevel = levelIt->second;
 
-  if (priceLevel.total_volume < orderIt->volume) {
-    eventLog.emplace_back(MakeDeleteEvent(timestamp_ns, orderIt->id, OrderbookError::InvalidVolume));
-    return OrderbookError::InvalidVolume; // volume can't drop below 0
-  }
+  assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
 
   priceLevel.total_volume -= orderIt->volume;
   idMap.erase(orderIt->id);
@@ -98,6 +95,7 @@ template <typename T>
   auto mapIt = idMap.find(orderId);
 
   if (mapIt == idMap.end()) {
+    eventLog.emplace_back(MakeModifyEvent(timestamp_ns, orderId, newVolume, OrderbookError::OrderNotFound));
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
@@ -121,11 +119,6 @@ template <typename T>
   PriceLevel &priceLevel = levelIt->second;
 
   Volume volumeChange = newVolume - orderIt->volume;
-
-  if (priceLevel.total_volume + volumeChange < 0) {
-    eventLog.emplace_back(MakeModifyEvent(timestamp_ns, orderIt->id, newVolume, OrderbookError::InvalidVolume));
-    return OrderbookError::InvalidVolume; // volume can't drop below 0
-  }
 
   priceLevel.total_volume += volumeChange;
   orderIt->volume = newVolume;

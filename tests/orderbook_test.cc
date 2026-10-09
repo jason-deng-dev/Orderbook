@@ -307,3 +307,170 @@ TEST(Orderbook_Map, FillSellSideStopsAboveLimit) {
   EXPECT_EQ(ob.GetBestAsk(), 99);
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(99, Side::Ask), 3);
 }
+
+// ----------------------------- Event log --------------------------------
+// The event log is append-only: every AddOrder / DeleteOrder / ModifyOrder
+// call appends exactly one OrderEvent describing that operation and its outcome.
+
+static void ExpectAddEvent(const OrderEvent &e, OrderId id, Side side, Price price, Volume volume, TraderId traderId,
+                           Volume filledVolume, Volume restingVolume, OrderStatus status,
+                           OrderbookError error = OrderbookError::OK) {
+  EXPECT_EQ(e.type, EventType::Add);
+  EXPECT_EQ(e.orderId, id);
+  EXPECT_EQ(e.side, side);
+  EXPECT_EQ(e.price, price);
+  EXPECT_EQ(e.volume, volume);
+  EXPECT_EQ(e.traderId, traderId);
+  EXPECT_EQ(e.filledVolume, filledVolume);
+  EXPECT_EQ(e.restingVolume, restingVolume);
+  EXPECT_EQ(e.orderStatus, status);
+  EXPECT_EQ(e.orderbookError, error);
+}
+
+static void ExpectCancelEvent(const OrderEvent &e, OrderId id, OrderbookError error) {
+  EXPECT_EQ(e.type, EventType::Cancel);
+  EXPECT_EQ(e.orderId, id);
+  EXPECT_EQ(e.orderbookError, error);
+}
+
+static void ExpectModifyEvent(const OrderEvent &e, OrderId id, Volume newVolume, OrderbookError error) {
+  EXPECT_EQ(e.type, EventType::Modify);
+  EXPECT_EQ(e.orderId, id);
+  EXPECT_EQ(e.volume, newVolume);
+  EXPECT_EQ(e.orderbookError, error);
+}
+
+TEST(EventLog, EmptyOnFreshBook) {
+  Orderbook_Map ob;
+  EXPECT_TRUE(ob.GetEventLog().empty());
+}
+
+TEST(EventLog, RecordsRestingAdd) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 1);
+  // nothing matched => nothing filled, whole volume rests
+  ExpectAddEvent(log[0], 1, Side::Bid, 100, 10, 7, 0, 10, OrderStatus::Resting);
+}
+
+TEST(EventLog, RecordsRejectedDuplicateAdd) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+  auto dup = ob.AddOrder(1, Side::Ask, 101, 5, 8);
+  ASSERT_EQ(dup.error, OrderbookError::DuplicateId);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  ExpectAddEvent(log[1], 1, Side::Ask, 101, 5, 8, 0, 5, OrderStatus::Rejected, OrderbookError::DuplicateId);
+}
+
+TEST(EventLog, RecordsFilledAdd) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Ask, 101, 10, 1), 10);
+  auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
+  ASSERT_EQ(r.status, OrderStatus::Filled);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  ExpectAddEvent(log[1], 2, Side::Bid, 101, 10, 2, 10, 0, OrderStatus::Filled);
+}
+
+TEST(EventLog, RecordsPartiallyFilledAdd) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Ask, 101, 4, 1), 4);
+  auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
+  ASSERT_EQ(r.status, OrderStatus::PartiallyFilled);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  // filledVolume + restingVolume must account for the whole incoming volume
+  ExpectAddEvent(log[1], 2, Side::Bid, 101, 10, 2, 4, 6, OrderStatus::PartiallyFilled);
+}
+
+TEST(EventLog, RecordsSuccessfulCancel) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+  ASSERT_EQ(ob.DeleteOrder(1), OrderbookError::OK);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  ExpectCancelEvent(log[1], 1, OrderbookError::OK);
+}
+
+TEST(EventLog, RecordsCancelOfMissingOrder) {
+  Orderbook_Map ob;
+  ASSERT_EQ(ob.DeleteOrder(42), OrderbookError::OrderNotFound);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 1);
+  ExpectCancelEvent(log[0], 42, OrderbookError::OrderNotFound);
+}
+
+TEST(EventLog, RecordsSuccessfulModify) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+  ASSERT_EQ(ob.ModifyOrder(1, 4), OrderbookError::OK);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  ExpectModifyEvent(log[1], 1, 4, OrderbookError::OK);
+}
+
+TEST(EventLog, RecordsRejectedModify) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+  ASSERT_EQ(ob.ModifyOrder(1, 25), OrderbookError::InvalidVolume);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  ExpectModifyEvent(log[1], 1, 25, OrderbookError::InvalidVolume);
+}
+
+TEST(EventLog, ModifyToZeroIsRecordedAsCancel) {
+  Orderbook_Map ob;
+  ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
+  ASSERT_EQ(ob.ModifyOrder(1, 0), OrderbookError::OK);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 2);
+  // ModifyOrder(0) delegates to DeleteOrder, so it audits as a Cancel
+  ExpectCancelEvent(log[1], 1, OrderbookError::OK);
+}
+
+TEST(EventLog, PreservesOperationOrder) {
+  Orderbook_Map ob;
+  ASSERT_EQ(ob.AddOrder(1, Side::Bid, 100, 10, 1).status, OrderStatus::Resting);
+  ASSERT_EQ(ob.ModifyOrder(1, 5), OrderbookError::OK);
+  ASSERT_EQ(ob.AddOrder(2, Side::Ask, 100, 5, 2).status, OrderStatus::Filled);
+  ASSERT_EQ(ob.DeleteOrder(2), OrderbookError::OrderNotFound); // already filled, nothing to cancel
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 4);
+  EXPECT_EQ(log[0].type, EventType::Add);
+  EXPECT_EQ(log[1].type, EventType::Modify);
+  EXPECT_EQ(log[2].type, EventType::Add);
+  EXPECT_EQ(log[3].type, EventType::Cancel);
+
+  EXPECT_EQ(log[0].orderId, 1);
+  EXPECT_EQ(log[1].orderId, 1);
+  EXPECT_EQ(log[2].orderId, 2);
+  EXPECT_EQ(log[3].orderId, 2);
+}
+
+TEST(EventLog, TimestampsAreMonotonic) {
+  Orderbook_Map ob;
+  ASSERT_EQ(ob.AddOrder(1, Side::Bid, 100, 10, 1).status, OrderStatus::Resting);
+  ASSERT_EQ(ob.AddOrder(2, Side::Bid, 99, 10, 1).status, OrderStatus::Resting);
+  ASSERT_EQ(ob.ModifyOrder(1, 5), OrderbookError::OK);
+  ASSERT_EQ(ob.DeleteOrder(2), OrderbookError::OK);
+  ASSERT_EQ(ob.DeleteOrder(999), OrderbookError::OrderNotFound);
+
+  const auto &log = ob.GetEventLog();
+  ASSERT_EQ(log.size(), 5);
+  EXPECT_GT(log[0].timestamp_ns, 0);
+  for (size_t i = 1; i < log.size(); ++i) {
+    EXPECT_LE(log[i - 1].timestamp_ns, log[i].timestamp_ns);
+  }
+}

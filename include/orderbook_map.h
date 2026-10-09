@@ -21,7 +21,7 @@ private:
   template <typename T>
   [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
 
-  [[nodiscard]] MatchResult HandleFill(Order &order);
+  [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume);
 
   std::map<Price, PriceLevel, std::greater<Price>> bidLevels;
 
@@ -50,7 +50,7 @@ public:
   }
 
   [[nodiscard]] std::optional<Price> GetBestAsk() const {
-    if (bidLevels.empty()) {
+    if (askLevels.empty()) {
       return std::nullopt;
     }
     return askLevels.begin()->first;

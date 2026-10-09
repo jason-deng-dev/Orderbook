@@ -18,19 +18,24 @@
 template <typename T>
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                                   TraderId traderId) {
-  Order newOrder{side, orderId, traderId, price, volume};
+  MatchResult matchResult = HandleFill(side, price, volume);
+  if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
+    return matchResult;
+  }
+  // partial fill or resting 
+  Order newOrder{side, orderId, traderId, price, matchResult.restingVolume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
-  priceLevel.total_volume += volume;
+  priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
-  return HandleFill(*orderIt);
+
+  return matchResult;
 }
 
 // ----------------------------- DeleteOrder --------------------------------
 [[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(OrderId orderId) {
   auto mapIt = idMap.find(orderId);
-
   if (mapIt == idMap.end()) {
     return OrderbookError::OrderNotFound;
   }
@@ -108,14 +113,14 @@ template <typename T>
 
 // ----------------------------- HandleFill --------------------------------
 
-[[nodiscard]] MatchResult Orderbook_Map::HandleFill(Order &incomingOrder) {
-  Volume initialVolume = incomingOrder.volume;
-  Volume remainingVolume = incomingOrder.volume;
+[[nodiscard]] MatchResult Orderbook_Map::HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume) {
+  Volume initialVolume = incomingOrderVolume;
+  Volume remainingVolume = incomingOrderVolume;
   Volume filledVolume = 0;
 
-  if (incomingOrder.side == Side::Bid) {
+  if (side == Side::Bid) {
     auto bestAskPriceOpt = GetBestAsk();
-    if (!bestAskPriceOpt.has_value() || *bestAskPriceOpt > incomingOrder.price) {
+    if (!bestAskPriceOpt.has_value() || *bestAskPriceOpt > incomingOrderPrice) {
       return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume}; // no crossing liquidity => order rests
     }
 
@@ -125,7 +130,7 @@ template <typename T>
       Price bestAskPrice = bestAskIt->first;
 
       // did price move and stop crossing
-      if (incomingOrder.price < bestAskPrice) {
+      if (incomingOrderPrice < bestAskPrice) {
         break;
       }
 
@@ -159,7 +164,7 @@ template <typename T>
     }
   } else {
     auto bestBidPriceOpt = GetBestBid();
-    if (!bestBidPriceOpt.has_value() || *bestBidPriceOpt < incomingOrder.price) {
+    if (!bestBidPriceOpt.has_value() || *bestBidPriceOpt < incomingOrderPrice) {
       return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume};
     }
 
@@ -167,7 +172,7 @@ template <typename T>
       auto bestBidIt = bidLevels.begin();
       Price bestBidPrice = bestBidIt->first;
 
-      if (incomingOrder.price > bestBidPrice) {
+      if (incomingOrderPrice > bestBidPrice) {
         break;
       }
 
@@ -198,6 +203,7 @@ template <typename T>
     }
   }
 
+      
   OrderStatus status;
   if (filledVolume == 0) {
     status = OrderStatus::Resting;

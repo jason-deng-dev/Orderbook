@@ -1,5 +1,9 @@
-- [x] API for orderbook_map 
+- [x] Orderbook_Map 
   - [x] AddOrder
   - [x] DeleteOrder
   - [x] ModifyOrder
+  - [x] FillOrder
+    - [ ] handle self trade
+  - [ ] ExecutionLog
+  - [ ] EventLog
 - [ ] API for orderbook_vector

@@ -25,3 +25,10 @@ Why?
 - by not storing timestamp inside Orderbook implementation data structure, we avoid reading the timestamp from memory during the matching loop, which wastes CPU cycles and pollutes the cache
 - Order struct shrinks 8 bytes, as a result our `std::list` nodes are smaller, thus less memory footprint
 - so that matching engine loop becomes purely about price/volume, with fewer cache lines touched during the matching loop
+
+# AddOrder / HandleFill Interaction
+Initially the shape of the AddOrder and HandleFill interaction was that I added the order first, and passed the iterator of the order to HandleFill
+- as a result of this if there was a partial fill or a full fill I would have to remove the order I just added
+- decided that the better approach is to FillOrder first based on hte incoming order, and then use the MatchResult returned from FillOrder to determine whether or not to add the order
+
+

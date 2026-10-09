@@ -21,8 +21,6 @@ struct PriceLevel {
   std::list<Order> orders;
 };
 
-
-
 enum class OrderbookError { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice };
 
 enum class OrderStatus {

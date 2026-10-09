@@ -18,11 +18,11 @@
 template <typename T>
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                                   TraderId traderId) {
-  MatchResult matchResult = HandleFill(side, price, volume);
+  MatchResult matchResult = HandleFill(side, price, volume, traderId);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
     return matchResult;
   }
-  // partial fill or resting 
+  // partial fill or resting
   Order newOrder{side, orderId, traderId, price, matchResult.restingVolume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
@@ -113,7 +113,7 @@ template <typename T>
 
 // ----------------------------- HandleFill --------------------------------
 
-[[nodiscard]] MatchResult Orderbook_Map::HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume) {
+[[nodiscard]] MatchResult Orderbook_Map::HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume, TraderId incomingTraderId) {
   Volume initialVolume = incomingOrderVolume;
   Volume remainingVolume = incomingOrderVolume;
   Volume filledVolume = 0;
@@ -123,87 +123,85 @@ template <typename T>
     if (!bestAskPriceOpt.has_value() || *bestAskPriceOpt > incomingOrderPrice) {
       return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume}; // no crossing liquidity => order rests
     }
+    auto askLevelIt = askLevels.begin();
 
-    // iterate through askLevels while still have volume to fill
-    while (remainingVolume > 0 && !askLevels.empty()) {
-      auto bestAskIt = askLevels.begin();
-      Price bestAskPrice = bestAskIt->first;
+    // while have volume to fill and still have fillable orders
+    while (remainingVolume > 0 &&askLevelIt != askLevels.end() && askLevelIt->first <= incomingOrderPrice) {
+      auto& priceLevel = askLevelIt->second;
+      auto restingOrderIt = priceLevel.orders.begin();
 
-      // did price move and stop crossing
-      if (incomingOrderPrice < bestAskPrice) {
-        break;
-      }
-
-      PriceLevel &askLevel = bestAskIt->second;
-
-      // match against resting orders in price level
-      while (remainingVolume > 0 && !askLevel.orders.empty()) {
-        auto restingOrderIt = askLevel.orders.begin();
+      while (remainingVolume > 0 && restingOrderIt != priceLevel.orders.end()) {
         Order &restingOrder = *restingOrderIt;
-
+        // self-trade prevention
+        if (restingOrder.trader_id == incomingTraderId) {
+          ++restingOrderIt;
+          continue;
+        }
+        // normal matching
         Volume matchQty = std::min(remainingVolume, restingOrder.volume);
-
         filledVolume += matchQty;
         remainingVolume -= matchQty;
 
         restingOrder.volume -= matchQty;
-        askLevel.total_volume -= matchQty;
-
+        priceLevel.total_volume -= matchQty;
         if (restingOrder.volume == 0) {
-          // clean up fully filled resting orders
           idMap.erase(restingOrder.id);
-          askLevel.orders.erase(restingOrderIt);
+          restingOrderIt = priceLevel.orders.erase(restingOrderIt);
         } else {
-          // resting order was only partially filled, meaning incoming order was filled
-          break;
+          break; // resting order was paritally filled, meaning incoming order was filled
         }
       }
-      if (askLevel.orders.empty()) {
-        askLevels.erase(bestAskIt);
+      if (priceLevel.orders.empty()) {
+        askLevelIt = askLevels.erase(askLevelIt);
+      } else {
+        // exit if order is filled
+        if (remainingVolume == 0) break;
+        askLevelIt++; // had a self trade occur, just move on to next level
       }
     }
   } else {
     auto bestBidPriceOpt = GetBestBid();
     if (!bestBidPriceOpt.has_value() || *bestBidPriceOpt < incomingOrderPrice) {
-      return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume};
+      return {OrderStatus::Resting, OrderbookError::OK, 0, initialVolume}; // no crossing liquidity => order rests
     }
+    auto bidLevelIt = bidLevels.begin();
 
-    while (remainingVolume > 0 && !bidLevels.empty()) {
-      auto bestBidIt = bidLevels.begin();
-      Price bestBidPrice = bestBidIt->first;
+    // while have volume to fill and still have fillable orders
+    while (remainingVolume > 0 &&bidLevelIt != bidLevels.end() && bidLevelIt->first >= incomingOrderPrice) {
+      auto& priceLevel = bidLevelIt->second;
+      auto restingOrderIt = priceLevel.orders.begin();
 
-      if (incomingOrderPrice > bestBidPrice) {
-        break;
-      }
-
-      PriceLevel &bidLevel = bestBidIt->second;
-
-      while (remainingVolume > 0 && !bidLevel.orders.empty()) {
-        auto restingOrderIt = bidLevel.orders.begin();
+      while (remainingVolume > 0 && restingOrderIt != priceLevel.orders.end()) {
         Order &restingOrder = *restingOrderIt;
-
+        // self-trade prevention
+        if (restingOrder.trader_id == incomingTraderId) {
+          ++restingOrderIt;
+          continue;
+        }
+        // normal matching
         Volume matchQty = std::min(remainingVolume, restingOrder.volume);
-
         filledVolume += matchQty;
         remainingVolume -= matchQty;
 
         restingOrder.volume -= matchQty;
-        bidLevel.total_volume -= matchQty;
-
+        priceLevel.total_volume -= matchQty;
         if (restingOrder.volume == 0) {
           idMap.erase(restingOrder.id);
-          bidLevel.orders.erase(restingOrderIt);
+          restingOrderIt = priceLevel.orders.erase(restingOrderIt);
         } else {
-          break;
+          break; // resting order was paritally filled, meaning incoming order was filled
         }
       }
-      if (bidLevel.orders.empty()) {
-        bidLevels.erase(bestBidIt);
+      if (priceLevel.orders.empty()) {
+        bidLevelIt = bidLevels.erase(bidLevelIt);
+      } else {
+        // exit if order is filled
+        if (remainingVolume == 0) break;
+        bidLevelIt++; // had a self trade occur, just move on to next level
       }
     }
   }
 
-      
   OrderStatus status;
   if (filledVolume == 0) {
     status = OrderStatus::Resting;

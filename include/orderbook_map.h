@@ -21,7 +21,7 @@ private:
   template <typename T>
   [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
 
-  [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume);
+  [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume, TraderId incomingTraderId);
 
   std::map<Price, PriceLevel, std::greater<Price>> bidLevels;
 

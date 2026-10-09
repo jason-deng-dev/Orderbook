@@ -27,8 +27,12 @@ Why?
 - so that matching engine loop becomes purely about price/volume, with fewer cache lines touched during the matching loop
 
 # AddOrder / HandleFill Interaction
-Initially the shape of the AddOrder and HandleFill interaction was that I added the order first, and passed the iterator of the order to HandleFill
+Initially the shape of the AddOrder and HandleFill interaction was to add the order first, and passed the iterator of the added order to HandleFill
 - as a result of this if there was a partial fill or a full fill I would have to remove the order I just added
-- decided that the better approach is to FillOrder first based on hte incoming order, and then use the MatchResult returned from FillOrder to determine whether or not to add the order
+- implemneted a better approach to FillOrder first based on the incoming order, and then use the MatchResult returned from FillOrder to determine whether or not to add the order
 
-
+# Self trade prevention
+The engine implements a "Skip" (ignore) Self-Trade prevention Policy during the matching loop, prioritizing absolute zero hot-path overhead over strict price-time priority preservation for self-matching accounts.
+- During HandleFill, if a resting order's trader_id matches incoming order's trader_id (whether incoming order is Bid or Ask), the engine advances the iterator without executing a fill
+- The skipped resting orders remain intact and visible in the orderbook, allowing other market participants to match against it
+- While it leaves a "phantom" liquidity for the incoming order and slightly deviates from strict price-time priority, it guarantees maximum matching throughput

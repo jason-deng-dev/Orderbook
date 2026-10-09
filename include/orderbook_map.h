@@ -93,4 +93,7 @@ public:
     }
     return orderCount;
   };
+
+  // event log
+  [[nodiscard]] const std::vector<OrderEvent> &GetEventLog() const { return eventLog; }
 };

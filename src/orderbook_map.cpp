@@ -7,7 +7,10 @@
 // ----------------------------- AddOrder --------------------------------
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
                                                   TraderId traderId) {
-  if (idMap.contains(orderId)) return {OrderStatus::Rejected, OrderbookError::DuplicateId, 0, volume};
+  if (idMap.contains(orderId)) {
+    return {.filledVolume = 0, .restingVolume = volume, .status = OrderStatus::Rejected,
+            .error = OrderbookError::DuplicateId};
+  }
   if (side == Side::Bid) {
     return AddOrder(bidLevels, side, orderId, price, volume, traderId);
   } else {
@@ -23,13 +26,13 @@ template <typename T>
     return matchResult;
   }
   // partial fill or resting
-  Order newOrder{side, orderId, traderId, price, matchResult.restingVolume};
+  Order newOrder{.id = orderId, .price = price, .side = side, .trader_id = traderId,
+                 .volume = matchResult.restingVolume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
   priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
-
   return matchResult;
 }
 
@@ -126,7 +129,9 @@ template <typename T>
 
   auto bestPriceOpt = getBestPrice();
   if (!bestPriceOpt.has_value() || !shouldCross(*bestPriceOpt)) {
-    return {OrderStatus::Resting, OrderbookError::OK, 0, incomingOrderVolume}; // no crossing liquidity => order rests
+    // no crossing liquidity => order rests
+    return {.filledVolume = 0, .restingVolume = incomingOrderVolume, .status = OrderStatus::Resting,
+            .error = OrderbookError::OK};
   }
 
   auto executeMatching = [&](auto &levels) {
@@ -183,5 +188,6 @@ template <typename T>
     status = OrderStatus::PartiallyFilled;
   }
 
-  return {status, OrderbookError::OK, filledVolume, remainingVolume};
+  return {.filledVolume = filledVolume, .restingVolume = remainingVolume, .status = status,
+          .error = OrderbookError::OK};
 }

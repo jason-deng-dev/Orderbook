@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <vector>
 
 class Orderbook_Map {
 public:
@@ -28,6 +29,8 @@ private:
   std::map<Price, PriceLevel, std::less<Price>> askLevels;
 
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
+
+  std::vector<OrderEvent> eventLog;
 
 public:
   // --- getters ---

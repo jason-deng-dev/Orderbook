@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <cstdint>
 #include <list>
 
@@ -7,6 +8,7 @@ using OrderId = uint64_t;
 using Volume = uint32_t;
 using Price = int64_t;
 using TraderId = uint32_t;
+using Timestamp = uint64_t;
 
 struct Order {
   OrderId id;
@@ -32,11 +34,11 @@ struct MatchResult {
   OrderbookError error;
 };
 
-enum class EventType : uint8_t { Add, Cancel, Modify, Fill, Reject };
+enum class EventType : uint8_t { Add, Cancel, Modify };
 
 struct alignas(64) OrderEvent {
   // 8-byte types (24 bytes total)
-  uint64_t timestamp_ns;
+  Timestamp timestamp_ns;
   OrderId orderId;
   Price price;
 
@@ -55,4 +57,33 @@ struct alignas(64) OrderEvent {
   // Raw size 44 bytes, Compiler pads to 48, alignas(64) pads to 64
 };
 
+inline int64_t now_ns() { return std::chrono::steady_clock::now().time_since_epoch().count(); }
 
+static OrderEvent MakeAddEvent(Timestamp ts, Side side, OrderId id, Price price, Volume volume, TraderId traderId,
+                               MatchResult matchResult) {
+  return OrderEvent{.timestamp_ns = ts,
+                    .orderId = id,
+                    .price = price,
+                    .traderId = traderId,
+                    .volume = volume,
+                    .filledVolume = matchResult.filledVolume,
+                    .restingVolume = matchResult.restingVolume,
+                    .type = EventType::Add,
+                    .side = side,
+                    .orderbookError = matchResult.error,
+                    .orderStatus = matchResult.status};
+}
+
+
+static OrderEvent MakeDeleteEvent(Timestamp ts, OrderId id, OrderbookError orderbookError) {
+  return OrderEvent{.timestamp_ns = ts, .orderId = id, .type = EventType::Cancel, .orderbookError = orderbookError};
+}
+
+
+static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, OrderbookError orderbookError) {
+  return OrderEvent{.timestamp_ns = ts,
+                    .orderId = id,
+                    .volume = newVolume,
+                    .type = EventType::Modify,
+                    .orderbookError = orderbookError};
+}

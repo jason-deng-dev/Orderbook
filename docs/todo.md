@@ -3,7 +3,6 @@
   - [x] DeleteOrder
   - [x] ModifyOrder
   - [x] FillOrder
-    - [ ] handle self trade
-  - [ ] ExecutionLog
-  - [ ] EventLog
+    - [x] handle self trade
+  - [x] EventLog
 - [ ] API for orderbook_vector

@@ -7,58 +7,71 @@
 // ----------------------------- AddOrder --------------------------------
 [[nodiscard]] MatchResult Orderbook_Map::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
                                                   TraderId traderId) {
+  Timestamp timestamp_ns = now_ns();
+
   if (idMap.contains(orderId)) {
-    return {.filledVolume = 0, .restingVolume = volume, .status = OrderStatus::Rejected,
-            .error = OrderbookError::DuplicateId};
+    MatchResult matchResult{.filledVolume = 0,
+                            .restingVolume = volume,
+                            .status = OrderStatus::Rejected,
+                            .error = OrderbookError::DuplicateId};
+    eventLog.emplace_back(MakeAddEvent(timestamp_ns, side, orderId, price, volume, traderId, matchResult));
+    return matchResult;
   }
   if (side == Side::Bid) {
-    return AddOrder(bidLevels, side, orderId, price, volume, traderId);
+    return AddOrder(timestamp_ns, bidLevels, side, orderId, price, volume, traderId);
   } else {
-    return AddOrder(askLevels, side, orderId, price, volume, traderId);
+    return AddOrder(timestamp_ns, askLevels, side, orderId, price, volume, traderId);
   }
 };
 
 template <typename T>
-[[nodiscard]] MatchResult Orderbook_Map::AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
-                                                  TraderId traderId) {
-  MatchResult matchResult = HandleFill(side, price, volume, traderId);
+[[nodiscard]] MatchResult Orderbook_Map::AddOrder(Timestamp timestamp_ns, T &levels, Side side, OrderId orderId,
+                                                  Price price, Volume volume, TraderId traderId) {
+  const MatchResult matchResult = HandleFill(side, price, volume, traderId);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
+    eventLog.emplace_back(MakeAddEvent(timestamp_ns, side, orderId, price, volume, traderId, matchResult));
     return matchResult;
   }
   // partial fill or resting
-  Order newOrder{.id = orderId, .price = price, .side = side, .trader_id = traderId,
-                 .volume = matchResult.restingVolume};
+  Order newOrder{
+      .id = orderId, .price = price, .side = side, .trader_id = traderId, .volume = matchResult.restingVolume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
   priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
+
+  eventLog.emplace_back(MakeAddEvent(timestamp_ns, side, orderId, price, volume, traderId, matchResult));
   return matchResult;
 }
 
 // ----------------------------- DeleteOrder --------------------------------
 [[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(OrderId orderId) {
+  Timestamp timestamp_ns = now_ns();
   auto mapIt = idMap.find(orderId);
   if (mapIt == idMap.end()) {
+    eventLog.emplace_back(MakeDeleteEvent(timestamp_ns, orderId, OrderbookError::OrderNotFound));
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
 
   if (orderIt->side == Side::Bid) {
-    return DeleteOrder(orderIt, bidLevels);
+    return DeleteOrder(timestamp_ns, orderIt, bidLevels);
   } else {
-    return DeleteOrder(orderIt, askLevels);
+    return DeleteOrder(timestamp_ns, orderIt, askLevels);
   }
 };
 
 template <typename T>
-[[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(std::list<Order>::iterator orderIt, T &levels) {
+[[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(Timestamp timestamp_ns, std::list<Order>::iterator orderIt,
+                                                        T &levels) {
   auto levelIt = levels.find(orderIt->price);
   assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
 
   PriceLevel &priceLevel = levelIt->second;
 
   if (priceLevel.total_volume < orderIt->volume) {
+    eventLog.emplace_back(MakeDeleteEvent(timestamp_ns, orderIt->id, OrderbookError::InvalidVolume));
     return OrderbookError::InvalidVolume; // volume can't drop below 0
   }
 
@@ -69,12 +82,15 @@ template <typename T>
   if (priceLevel.orders.empty()) {
     levels.erase(levelIt);
   }
+
+  eventLog.emplace_back(MakeDeleteEvent(timestamp_ns, orderIt->id, OrderbookError::OK));
   return OrderbookError::OK;
 }
 
 // ----------------------------- ModifyOrder --------------------------------
 
 [[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(OrderId orderId, Volume newVolume) {
+  Timestamp timestamp_ns = now_ns();
   if (newVolume == 0) {
     return DeleteOrder(orderId);
   }
@@ -86,19 +102,20 @@ template <typename T>
   }
   auto orderIt = mapIt->second;
   if (orderIt->volume <= newVolume) {
+    eventLog.emplace_back(MakeModifyEvent(timestamp_ns, orderId, newVolume, OrderbookError::InvalidVolume));
     return OrderbookError::InvalidVolume; // can't add orders or cancel 0 orders
   }
 
   if (orderIt->side == Side::Bid) {
-    return ModifyOrder(orderIt, bidLevels, newVolume);
+    return ModifyOrder(timestamp_ns, orderIt, bidLevels, newVolume);
   } else {
-    return ModifyOrder(orderIt, askLevels, newVolume);
+    return ModifyOrder(timestamp_ns, orderIt, askLevels, newVolume);
   }
 }
 
 template <typename T>
-[[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(std::list<Order>::iterator orderIt, T &levels,
-                                                        Volume newVolume) {
+[[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(Timestamp timestamp_ns, std::list<Order>::iterator orderIt,
+                                                        T &levels, Volume newVolume) {
   auto levelIt = levels.find(orderIt->price);
   assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
   PriceLevel &priceLevel = levelIt->second;
@@ -106,11 +123,14 @@ template <typename T>
   Volume volumeChange = newVolume - orderIt->volume;
 
   if (priceLevel.total_volume + volumeChange < 0) {
+    eventLog.emplace_back(MakeModifyEvent(timestamp_ns, orderIt->id, newVolume, OrderbookError::InvalidVolume));
     return OrderbookError::InvalidVolume; // volume can't drop below 0
   }
 
   priceLevel.total_volume += volumeChange;
   orderIt->volume = newVolume;
+
+  eventLog.emplace_back(MakeModifyEvent(timestamp_ns, orderIt->id, newVolume, OrderbookError::OK));
   return OrderbookError::OK;
 }
 
@@ -130,7 +150,9 @@ template <typename T>
   auto bestPriceOpt = getBestPrice();
   if (!bestPriceOpt.has_value() || !shouldCross(*bestPriceOpt)) {
     // no crossing liquidity => order rests
-    return {.filledVolume = 0, .restingVolume = incomingOrderVolume, .status = OrderStatus::Resting,
+    return {.filledVolume = 0,
+            .restingVolume = incomingOrderVolume,
+            .status = OrderStatus::Resting,
             .error = OrderbookError::OK};
   }
 
@@ -188,6 +210,6 @@ template <typename T>
     status = OrderStatus::PartiallyFilled;
   }
 
-  return {.filledVolume = filledVolume, .restingVolume = remainingVolume, .status = status,
-          .error = OrderbookError::OK};
+  return {
+      .filledVolume = filledVolume, .restingVolume = remainingVolume, .status = status, .error = OrderbookError::OK};
 }

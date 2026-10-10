@@ -145,25 +145,25 @@ template <typename SearchPolicy>
 template <typename T, typename Compare>
 [[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt,
                                                            T &levels, Compare comp) {
-  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, )
+  // auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, )
   
-  levels.find(orderIt->price);
-  assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
+  // levels.find(orderIt->price);
+  // assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
 
-  PriceLevel &priceLevel = levelIt->second;
+  // PriceLevel &priceLevel = levelIt->second;
 
-  assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
+  // assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
 
-  priceLevel.total_volume -= orderIt->volume;
-  idMap.erase(orderIt->id);
-  priceLevel.orders.erase(orderIt);
+  // priceLevel.total_volume -= orderIt->volume;
+  // idMap.erase(orderIt->id);
+  // priceLevel.orders.erase(orderIt);
 
-  if (priceLevel.orders.empty()) {
-    levels.erase(levelIt);
-  }
+  // if (priceLevel.orders.empty()) {
+  //   levels.erase(levelIt);
+  // }
 
-  eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
-  return OrderbookError::OK;
+  // eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
+  // return OrderbookError::OK;
 }
 
 // ----------------------------- ModifyOrder --------------------------------

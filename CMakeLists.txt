@@ -15,7 +15,6 @@ FetchContent_MakeAvailable(googletest)
 
 add_library(orderbook_core 
   src/orderbook_map.cpp
-  src/orderbook_vector.cpp
 )
 
 # tells CMake compile every source file in orderbook_core with include/ added to compiler's search path
@@ -32,7 +31,8 @@ enable_testing()
 
 # add testing
 add_executable(orderbook_test
-  tests/orderbook_test.cc
+  tests/orderbook_map_test.cc
+  tests/search_policies_test.cc
 )
 
 target_link_libraries(orderbook_test PRIVATE

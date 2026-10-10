@@ -157,13 +157,12 @@ For our search policies
 ```c
 enum class SearchResult{
   found;
-  front;
-  end;
+  notFound;
 }
 ```
 
 - given a searchPrice and a std::vector<std::pair<Price, PriceLevel>> Level returns <SearchResult, iterator> 
 - if searchPrice exists: it should return <SearchResult::found, std::pair<Price, PriceLevel>::iterator>
-- if searchPrice doesn't exist: 
-  - if searchPrice is "worse" than all active bids/asks or it fits between prices, should return <SearchResult::front, Levels.begin()> to indicate that price not found, and if want to add the price, add to before the returned iterator
-  - if searchPrice is "better" than all active prices, should return <SearchResult::end, levels.end()> to indicate should insert price after returned iterator
+- if searchPrice doesn't exist: return <SearchResult::notFound, std::pair<Price, PriceLevel>::iterator>
+  - where if need to insert the price, insert it before the returned iterator
+

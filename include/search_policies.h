@@ -30,7 +30,7 @@ struct LinearSearch {
 struct BinarySearch {
   template <typename It,  class Compare>
   static std::pair<SearchResult, It> search(It first, It last, const Price price, Compare comp) {
-    auto it = std::lower_bound(first, last, price, comp);
+    auto it = std::lower_bound(first, last, price, [&comp](const auto& level, Price value){return comp(level.first,value);});
     if (it != last && it ->first == price) {
       return {SearchResult::found, it};
     }

@@ -1,14 +1,13 @@
 #pragma once
 
-
-#include<cassert>
+#include "search_policies.h"
 #include "types.h"
+#include <cassert>
 #include <cstddef>
 #include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include "search_policies.h"
 
 template <typename SearchPolicy>
 class Orderbook_Vector {
@@ -200,4 +199,17 @@ template <typename SearchPolicy>
 template <typename T, typename Compare>
 [[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(Timestamp ts,
                                                                          std::list<Order>::iterator orderIt, T &levels,
-                                                                         Volume newVolume, Compare comp) {}
+                                                                         Volume newVolume, Compare comp) {
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, comp);
+
+  assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
+  PriceLevel &priceLevel = levelIt->second;
+
+  Volume volumeChange = newVolume - orderIt->volume;
+
+  priceLevel.total_volume += volumeChange;
+  orderIt->volume = newVolume;
+
+  eventLog.emplace_back(MakeModifyEvent(ts, orderIt->id, newVolume, OrderbookError::OK));
+  return OrderbookError::OK;
+}

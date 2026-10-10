@@ -124,6 +124,26 @@ template <typename T, typename Compare>
                                                                    Price price, Volume volume, TraderId traderId,
                                                                    Compare comp) {
   const MatchResult matchResult = HandleFill(side, price, volume, traderId);
+  if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
+    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+    return matchResult;
+  }
+  // partial fill or resting
+  Order newOrder{
+      .id = orderId, .price = price, .side = side, .trader_id = traderId, .volume = matchResult.restingVolume};
+
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), price, comp);
+  if (res == SearchResult::notFound) {
+    levelIt = levels.insert(levelIt, {price, PriceLevel{}});
+  }
+  
+  auto &priceLevel = levelIt->second;
+  priceLevel.total_volume += matchResult.restingVolume;
+  auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
+  idMap.emplace(orderId, orderIt);
+
+  eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+  return matchResult;
 }
 
 // ----------------------------- DeleteOrder --------------------------------

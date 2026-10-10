@@ -5,5 +5,4 @@
   - [x] FillOrder
     - [x] handle self trade
   - [x] EventLog
-- [ ] Orderbook_Map
-- [ ] 
+- [x] Orderbook_Vector

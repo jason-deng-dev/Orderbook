@@ -1,5 +1,7 @@
 #pragma once
 
+
+#include<cassert>
 #include "types.h"
 #include <cstddef>
 #include <optional>
@@ -29,15 +31,15 @@ private:
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
                                        TraderId incomingTraderId);
 
-
   template <typename Levels, typename Compare>
-  [[nodiscard]] size_t FindLevelIndex(const Levels& levels, Price price, Compare comp);
+  [[nodiscard]] size_t FindLevelIndex(const Levels &levels, Price price, Compare comp);
 
   std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
   std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
 
   std::vector<OrderEvent> eventLog;
+
 public:
   // --- getters ---
   // idMap
@@ -75,8 +77,9 @@ public:
 // ----------------------------- HandleFill --------------------------------
 
 template <typename SearchPolicy>
-[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
-                                                       TraderId incomingTraderId) {
+[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::HandleFill(Side side, Price incomingOrderPrice,
+                                                                     Volume incomingOrderVolume,
+                                                                     TraderId incomingTraderId) {
   Volume remainingVolume = incomingOrderVolume;
   Volume filledVolume = 0;
   auto shouldCross = [&](Price bestPrice) {
@@ -97,8 +100,8 @@ template <typename SearchPolicy>
 
 // ----------------------------- AddOrder --------------------------------
 template <typename SearchPolicy>
-[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(OrderId orderId, Side side, Price price, Volume volume,
-                                                     TraderId traderId) {
+[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(OrderId orderId, Side side, Price price,
+                                                                   Volume volume, TraderId traderId) {
   Timestamp ts = now_ns();
   if (idMap.contains(orderId)) {
     MatchResult matchResult{.filledVolume = 0,
@@ -118,8 +121,9 @@ template <typename SearchPolicy>
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
-[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price,
-                                                     Volume volume, TraderId traderId, Compare comp) {
+[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId,
+                                                                   Price price, Volume volume, TraderId traderId,
+                                                                   Compare comp) {
   const MatchResult matchResult = HandleFill(side, price, volume, traderId);
 }
 
@@ -143,27 +147,26 @@ template <typename SearchPolicy>
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
-[[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt,
-                                                           T &levels, Compare comp) {
-  // auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, )
-  
-  // levels.find(orderIt->price);
-  // assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
+[[nodiscard]] OrderbookError
+Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels, Compare comp) {
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, comp);
 
-  // PriceLevel &priceLevel = levelIt->second;
+  assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
 
-  // assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
+  PriceLevel &priceLevel = levelIt->second;
 
-  // priceLevel.total_volume -= orderIt->volume;
-  // idMap.erase(orderIt->id);
-  // priceLevel.orders.erase(orderIt);
+  assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
 
-  // if (priceLevel.orders.empty()) {
-  //   levels.erase(levelIt);
-  // }
+  priceLevel.total_volume -= orderIt->volume;
+  idMap.erase(orderIt->id);
+  priceLevel.orders.erase(orderIt);
 
-  // eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
-  // return OrderbookError::OK;
+  if (priceLevel.orders.empty()) {
+    levels.erase(levelIt);
+  }
+
+  eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
+  return OrderbookError::OK;
 }
 
 // ----------------------------- ModifyOrder --------------------------------
@@ -195,5 +198,6 @@ template <typename SearchPolicy>
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
-[[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
-                                                           Volume newVolume, Compare comp) {}
+[[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(Timestamp ts,
+                                                                         std::list<Order>::iterator orderIt, T &levels,
+                                                                         Volume newVolume, Compare comp) {}

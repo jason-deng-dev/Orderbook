@@ -125,10 +125,11 @@ template <typename Compare>
   }
 
   auto executeMatching = [&](auto &levels) {
-    auto levelIt = levels.end();
+    // levels run from worst price to best, so matching starts at the back
+    size_t nextLevelIdx = levels.size();
     // while have volume to fill and still have fillable orders
-    while (remainingVolume > 0 && levelIt != levels.begin() && shouldCross(levelIt->first)) {
-      auto &priceLevel = levelIt->second;
+    while (remainingVolume > 0 && nextLevelIdx > 0 && shouldCross(levels[nextLevelIdx - 1].first)) {
+      auto &priceLevel = levels[--nextLevelIdx].second;
       auto restingOrderIt = priceLevel.orders.begin();
 
       while (remainingVolume > 0 && restingOrderIt != priceLevel.orders.end()) {
@@ -154,11 +155,11 @@ template <typename Compare>
         }
       }
       if (priceLevel.orders.empty()) {
-        levelIt = levels.erase(levelIt);
+        levels.erase(levels.begin() + nextLevelIdx);
       } else {
         // exit if order is filled
         if (remainingVolume == 0) break;
-        levelIt--; // had a self trade occur, just move on to next level
+        // had a self trade occur, just move on to next level
       }
     }
   };

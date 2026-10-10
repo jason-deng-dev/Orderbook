@@ -27,8 +27,9 @@ private:
   [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
                                            Volume newVolume, Compare comp);
 
+  template <typename Compare>
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
-                                       TraderId incomingTraderId);
+                                       TraderId incomingTraderId, Compare comp);
 
   template <typename Levels, typename Compare>
   [[nodiscard]] size_t FindLevelIndex(const Levels &levels, Price price, Compare comp);
@@ -62,12 +63,37 @@ public:
     return askLevels.back().first;
   }
 
-  [[nodiscard]] Volume GetTotalVolumeAtPrice(Price price, Side side) const;
+  [[nodiscard]] Volume GetTotalVolumeAtPrice(Price price, Side side) const {
+    if (side == Side::Bid) {
+      auto [res, levelIt] = SearchPolicy::search(bidLevels.begin(), bidLevels.end(), price, std::less<Price>());
+      return res == SearchResult::found ? levelIt->second.total_volume : 0;
+    } else {
+      auto [res, levelIt] = SearchPolicy::search(askLevels.begin(), askLevels.end(), price, std::greater<Price>());
+      return res == SearchResult::found ? levelIt->second.total_volume : 0;
+    }
+  };
 
-  [[nodiscard]] size_t GetOrderCountAtPrice(Price price, Side side) const;
+  [[nodiscard]] size_t GetOrderCountAtPrice(Price price, Side side) const {
+    if (side == Side::Bid) {
+      auto [res, levelIt] = SearchPolicy::search(bidLevels.begin(), bidLevels.end(), price, std::less<Price>());
+      return res == SearchResult::found ? levelIt->second.orders.size() : 0;
+    } else {
+      auto [res, levelIt] = SearchPolicy::search(askLevels.begin(), askLevels.end(), price, std::greater<Price>());
+      return res == SearchResult::found ? levelIt->second.orders.size() : 0;
+    }
+  }
 
   // overall book state
-  [[nodiscard]] size_t GetTotalOrderCount() const;
+  [[nodiscard]] size_t GetTotalOrderCount() const {
+    size_t orderCount = 0;
+    for (auto &[price, priceLevel] : bidLevels) {
+      orderCount += priceLevel.orders.size();
+    }
+    for (auto &[price, priceLevel] : askLevels) {
+      orderCount += priceLevel.orders.size();
+    }
+    return orderCount;
+  };
 
   // event log
   [[nodiscard]] const std::vector<OrderEvent> &GetEventLog() const { return eventLog; }
@@ -76,11 +102,13 @@ public:
 // ----------------------------- HandleFill --------------------------------
 
 template <typename SearchPolicy>
+template <typename Compare>
 [[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::HandleFill(Side side, Price incomingOrderPrice,
                                                                      Volume incomingOrderVolume,
-                                                                     TraderId incomingTraderId) {
+                                                                     TraderId incomingTraderId, Compare comp) {
   Volume remainingVolume = incomingOrderVolume;
   Volume filledVolume = 0;
+
   auto shouldCross = [&](Price bestPrice) {
     return side == Side::Bid ? (bestPrice <= incomingOrderPrice) : (bestPrice >= incomingOrderPrice);
   };
@@ -95,10 +123,68 @@ template <typename SearchPolicy>
             .status = OrderStatus::Resting,
             .error = OrderbookError::OK};
   }
+
+  auto executeMatching = [&](auto &levels) {
+    auto levelIt = levels.end();
+    // while have volume to fill and still have fillable orders
+    while (remainingVolume > 0 && levelIt != levels.begin() && shouldCross(levelIt->first)) {
+      auto &priceLevel = levelIt->second;
+      auto restingOrderIt = priceLevel.orders.begin();
+
+      while (remainingVolume > 0 && restingOrderIt != priceLevel.orders.end()) {
+        Order &restingOrder = *restingOrderIt;
+        // self-trade prevention
+        if (restingOrder.trader_id == incomingTraderId) {
+          ++restingOrderIt;
+          continue;
+        }
+        // normal matching
+        Volume matchQty = std::min(remainingVolume, restingOrder.volume);
+        filledVolume += matchQty;
+        remainingVolume -= matchQty;
+
+        restingOrder.volume -= matchQty;
+        priceLevel.total_volume -= matchQty;
+
+        if (restingOrder.volume == 0) {
+          idMap.erase(restingOrder.id);
+          restingOrderIt = priceLevel.orders.erase(restingOrderIt);
+        } else {
+          break; // resting order was paritally filled, meaning incoming order was filled
+        }
+      }
+      if (priceLevel.orders.empty()) {
+        levelIt = levels.erase(levelIt);
+      } else {
+        // exit if order is filled
+        if (remainingVolume == 0) break;
+        levelIt--; // had a self trade occur, just move on to next level
+      }
+    }
+  };
+
+  if (side == Side::Bid) {
+    executeMatching(askLevels);
+  } else {
+    executeMatching(bidLevels);
+  }
+
+  OrderStatus status;
+  if (filledVolume == 0) {
+    status = OrderStatus::Resting;
+  } else if (remainingVolume == 0) {
+    status = OrderStatus::Filled;
+  } else {
+    status = OrderStatus::PartiallyFilled;
+  }
+
+  return {
+      .filledVolume = filledVolume, .restingVolume = remainingVolume, .status = status, .error = OrderbookError::OK};
 }
 
 // ----------------------------- AddOrder --------------------------------
 template <typename SearchPolicy>
+
 [[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(OrderId orderId, Side side, Price price,
                                                                    Volume volume, TraderId traderId) {
   Timestamp ts = now_ns();
@@ -123,7 +209,7 @@ template <typename T, typename Compare>
 [[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId,
                                                                    Price price, Volume volume, TraderId traderId,
                                                                    Compare comp) {
-  const MatchResult matchResult = HandleFill(side, price, volume, traderId);
+  const MatchResult matchResult = HandleFill(side, price, volume, traderId, comp);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
     eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
     return matchResult;
@@ -136,7 +222,7 @@ template <typename T, typename Compare>
   if (res == SearchResult::notFound) {
     levelIt = levels.insert(levelIt, {price, PriceLevel{}});
   }
-  
+
   auto &priceLevel = levelIt->second;
   priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);

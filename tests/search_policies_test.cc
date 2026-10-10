@@ -4,10 +4,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <functional>
-#include <gtest/gtest.h>
 #include <string>
 #include <utility>
 #include <vector>
+#include <gtest/gtest.h>
 
 namespace {
 

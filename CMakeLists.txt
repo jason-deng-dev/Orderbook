@@ -33,6 +33,7 @@ enable_testing()
 add_executable(orderbook_test
   tests/orderbook_map_test.cc
   tests/search_policies_test.cc
+  tests/orderbook_vector_test.cc
 )
 
 target_link_libraries(orderbook_test PRIVATE

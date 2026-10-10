@@ -38,7 +38,7 @@ enum class EventType : uint8_t { Add, Cancel, Modify };
 
 struct alignas(64) OrderEvent {
   // 8-byte types (24 bytes total)
-  Timestamp timestamp_ns;
+  Timestamp ts;
   OrderId orderId;
   Price price;
 
@@ -61,7 +61,7 @@ inline int64_t now_ns() { return std::chrono::steady_clock::now().time_since_epo
 
 static OrderEvent MakeAddEvent(Timestamp ts, Side side, OrderId id, Price price, Volume volume, TraderId traderId,
                                MatchResult matchResult) {
-  return OrderEvent{.timestamp_ns = ts,
+  return OrderEvent{.ts = ts,
                     .orderId = id,
                     .price = price,
                     .traderId = traderId,
@@ -74,16 +74,11 @@ static OrderEvent MakeAddEvent(Timestamp ts, Side side, OrderId id, Price price,
                     .orderStatus = matchResult.status};
 }
 
-
 static OrderEvent MakeDeleteEvent(Timestamp ts, OrderId id, OrderbookError orderbookError) {
-  return OrderEvent{.timestamp_ns = ts, .orderId = id, .type = EventType::Cancel, .orderbookError = orderbookError};
+  return OrderEvent{.ts = ts, .orderId = id, .type = EventType::Cancel, .orderbookError = orderbookError};
 }
 
-
 static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, OrderbookError orderbookError) {
-  return OrderEvent{.timestamp_ns = ts,
-                    .orderId = id,
-                    .volume = newVolume,
-                    .type = EventType::Modify,
-                    .orderbookError = orderbookError};
+  return OrderEvent{
+      .ts = ts, .orderId = id, .volume = newVolume, .type = EventType::Modify, .orderbookError = orderbookError};
 }

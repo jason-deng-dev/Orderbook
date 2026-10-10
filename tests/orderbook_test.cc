@@ -469,8 +469,8 @@ TEST(EventLog, TimestampsAreMonotonic) {
 
   const auto &log = ob.GetEventLog();
   ASSERT_EQ(log.size(), 5);
-  EXPECT_GT(log[0].timestamp_ns, 0);
+  EXPECT_GT(log[0].ts, 0);
   for (size_t i = 1; i < log.size(); ++i) {
-    EXPECT_LE(log[i - 1].timestamp_ns, log[i].timestamp_ns);
+    EXPECT_LE(log[i - 1].ts, log[i].ts);
   }
 }

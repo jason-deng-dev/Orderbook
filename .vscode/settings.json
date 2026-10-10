@@ -4,6 +4,10 @@
     "editor.inlayHints.enabled": "off",
     "[cpp]": {
         "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
-        "editor.formatOnType": true
+        "editor.formatOnType": false
+    },
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnType": false
     }
 }

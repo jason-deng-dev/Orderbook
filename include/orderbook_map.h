@@ -15,12 +15,12 @@ public:
 
 private:
   template <typename T>
-  [[nodiscard]] MatchResult AddOrder(Timestamp timestamp_ns, T &levels, Side side, OrderId orderId, Price price,
+  [[nodiscard]] MatchResult AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price,
                                      Volume volume, TraderId traderId);
   template <typename T>
-  [[nodiscard]] OrderbookError DeleteOrder(Timestamp timestamp_ns, std::list<Order>::iterator orderIt, T &levels);
+  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels);
   template <typename T>
-  [[nodiscard]] OrderbookError ModifyOrder(Timestamp timestamp_ns, std::list<Order>::iterator orderIt, T &levels,
+  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
                                            Volume newVolume);
 
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,

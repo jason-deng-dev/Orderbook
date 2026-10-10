@@ -54,7 +54,7 @@ maintain unified "Event Log" that audits all operations such as Add/Cancel/Modif
 ```c
 struct alignas(64) OrderEvent {
   EventType type;
-  uint64_t timestamp_ns;
+  uint64_t ts;
   OrderId orderId;
   TraderId traderId;
   Side side;
@@ -89,7 +89,7 @@ AddEvent stores:
 :
 
 ```c
- OrderEvent{.timestamp_ns = ts,
+ OrderEvent{.ts = ts,
                     .orderId = id,
                     .price = price,
                     .traderId = traderId,
@@ -105,15 +105,65 @@ AddEvent stores:
 DeleteEvent stores:
 
 ```c
-OrderEvent{.timestamp_ns = ts, .orderId = id, .type = EventType::Cancel, .orderbookError = orderbookError};
+OrderEvent{.ts = ts, .orderId = id, .type = EventType::Cancel, .orderbookError = orderbookError};
 ```
 
 ModifyEvent stores
 
 ```c
-OrderEvent{.timestamp_ns = ts,
+OrderEvent{.ts = ts,
                     .orderId = id,
                     .volume = newVolume,
                     .type = EventType::Modify,
                     .orderbookError = orderbookError};
 ```
+
+# Orderbook API (Vector and Map implementation)
+```c
+[[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
+[[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
+[[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);
+```
+
+# Orderbook Reverse Vector implementation
+
+## Data structure
+```c
+std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
+std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end
+std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
+```
+why reverse vector with best bid/ask at end of vector?
+- because actions are happening most on the top of the book (highest for bid, lowest for ask)
+- this means for the data structure if we put best price at index 0, then we are going to have to constantly shift our elements of our vector in memory all the time
+- by putting our "best price at the end of the vector, we minimize the number of copies
+
+## Binary Search vs Linear Search implementation
+To find where in our bidLevels/askLevels to insert a new <Price, PriceLevel> pair, or where to insert a new order (by finding the price that the order it belongs to)
+- we can perform binary search or linear search
+
+I will implement different look behaviors in AddOrder through template param
+- Binary Search via std::lower_bound()
+- Branchless Binary Search
+  - no early exit anymore, going to go through the entire collection no matter what, touching more memory
+- Linear Search 
+
+and test their Latency Distribution, to see the behavioral differences of these approaches and verify David Gross's assertion from his CppCon 2024 talk "When Nanoseconds Matter: Ultrafast Trading Systems in C++"
+- where he showed that linear search achieved the fastest performance due to the algorithim being in harmony with the hardware
+  - cache locality / the way it accesses the memory 
+
+
+For our search policies
+```c
+enum class SearchResult{
+  found;
+  front;
+  end;
+}
+```
+
+- given a searchPrice and a std::vector<std::pair<Price, PriceLevel>> Level returns <SearchResult, iterator> 
+- if searchPrice exists: it should return <SearchResult::found, std::pair<Price, PriceLevel>::iterator>
+- if searchPrice doesn't exist: 
+  - if searchPrice is "worse" than all active bids/asks or it fits between prices, should return <SearchResult::front, Levels.begin()> to indicate that price not found, and if want to add the price, add to before the returned iterator
+  - if searchPrice is "better" than all active prices, should return <SearchResult::end, levels.end()> to indicate should insert price after returned iterator

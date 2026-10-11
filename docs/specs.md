@@ -77,11 +77,11 @@ Deterministic Replay:
 - by replaying this single stream of events, can perfect reconstruct the entire orderbook state at any point of time
 
 `alignas(64)`
-by forcing the compielr to pad our struct so its total memory footprint is a multiple of 64 bytes (exact size of a standard CPU cache line), we guarantee that multi-threaded operations do not trigger hardware-level performance penalties
+one event per cache line. The engine is single-threaded, so this is a scan property, not a false-sharing claim — no claim is made about concurrent writers, because there are none.
 
-- since modern CPUs transfer data between main RAM and CPU's L1/L2/L3 caches in fixed 64-byte cache lines
-- if 2 separate threads write to different variables that happen to sit on the same 64-byte cache line, the CPU cores will constantly invalidate each other's cache to maintain coherence.
-- By padding the struct we ensure that each threads' write occupies its own dedicated cache line
+- modern CPUs transfer data between main RAM and L1/L2/L3 caches in fixed 64-byte cache lines
+- an event smaller than a line shares that line with its neighbour, so reading one event fetches bytes it does not own
+- padded to a line, one fetch is one event, and no event is ever split across two lines
 
 Use Factory functions to give compile-time safety 
 
@@ -166,3 +166,73 @@ enum class SearchResult{
 - if searchPrice doesn't exist: return <SearchResult::notFound, std::pair<Price, PriceLevel>::iterator>
   - where if need to insert the price, insert it before the returned iterator
 
+# Performance refactor plan
+
+## Intrusive
+- intrusive container stores its linkage pointers inside the element itself, not in a separate node
+Current implementation: Non-intrusive `std::list<Order>`
+```c
+node {Order data; prev*; next*; }
+```
+- node allocated separately, holds a copy/move of Order
+
+Intrusive:
+```c
+struct Order {
+  OrderId id;
+  Price price;
+  Side side;
+  TraderId trader_id;
+  Volume volume;
+  Order* prev;
+  Order* next;
+}
+```
+- linkage lives in the Order
+
+`std::list<Order> orders` becomes a pair of pointers (head, tail) to Orders
+- no wrapper node, no separate allocation for the linkage
+
+Why?
+- One allocation per order, not two. 
+- No copying: The order allocated is the order in the queue
+- O(1) removal from middle (Given an Order*, can unlink in O(1) without searching the queue)
+- Cache-friendly: Pointer travels with the data
+
+## Polymorphic Memory Resource (C++17) (std::pmr)
+way to plug a custom allocator into a container without changing the container type
+```c
+std::pmr::monotonic_buffer_resource pool { size };
+std::pmr::list<Order> queue{&pool};
+```
+Why?
+- hot-path allocation avoidance. By pre-allocating a big buffer once, every order allocation comes from that buffer in O(1) with no malloc, no locks, no syscalls
+
+## Pooled
+create a pool memory resource: a pre-allocated slab of memory that hands out fixed-size chunks.
+- For an intrusive queue of Orders, the pool is sized to hold N orders
+```c
+Order* order = pool.allocate(); // to allocate
+```
+
+# Workload & Validation Harness
+NASDAQ ITCH 5.0 feed handler: parser → SPSC ring → book builder; measured handoff cost at [X]ns and pipelined throughput at [N]M msgs/sec vs. [M]M single-threaded; book-state hashes identical across modes
+
+```
+ITCH file → Parser thread → [SPSC ring] → Book builder thread → Orderbook
+```
+Why SPSC?
+- single-producer (parser) single consumer (orderbook)
+- parsing is burst (message-type dependent); book updates are steady-state, the ring can absorb bursts
+- parser can run ahead while book thread applies the previous batch  
+- Zero allocation on handoff: preallocated ring, fixed-size slots. No malloc on hot path
+
+What to measure:
+|Measurement|Why|
+|-----------|--|
+Parse-to-book p50/p99/p99.9, single-threaded vs SPSC-pipelined| Does ring actually help?
+Ring handoff cost (ns/msg) | overhead paid
+Throughput (msg/sec) both modes | does pipelining improve throughput
+Ring occupancy distribution | is the producer or consumer the bottleneck?
+Cycles/msg producer, cycles/msg consumer | where the time goes
+Book-state hashes, both modes | correctness

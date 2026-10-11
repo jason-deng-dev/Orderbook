@@ -218,6 +218,11 @@ Order* order = pool.allocate(); // to allocate
 # Workload & Validation Harness
 NASDAQ ITCH 5.0 feed handler: parser → SPSC ring → book builder; measured handoff cost at [X]ns and pipelined throughput at [N]M msgs/sec vs. [M]M single-threaded; book-state hashes identical across modes
 
+Source: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/ 
+
+07302019.NASDAQ_ITCH50.gz
+
+
 ```
 ITCH file → Parser thread → [SPSC ring] → Book builder thread → Orderbook
 ```
@@ -236,3 +241,30 @@ Throughput (msg/sec) both modes | does pipelining improve throughput
 Ring occupancy distribution | is the producer or consumer the bottleneck?
 Cycles/msg producer, cycles/msg consumer | where the time goes
 Book-state hashes, both modes | correctness
+
+# NASDAQ ITCH 5.0 feed handler
+NASDAQ ITCH 5.0 feed handler: parser → SPSC ring → book builder; measured handoff cost at [X]ns and pipelined throughput at [N]M msgs/sec vs. [M]M single-threaded; book-state hashes identical across modes
+
+Source: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/ (07302019.NASDAQ_ITCH50.gz)
+- this is the file used for benchmarking/correctness testing
+
+```
+ITCH file → Parser thread → [SPSC ring] → Book builder thread → Orderbook
+```
+Why SPSC?
+- single-producer (parser) single consumer (orderbook)
+- parsing is burst (message-type dependent); book updates are steady-state, the ring can absorb bursts
+- parser can run ahead while book thread applies the previous batch  
+- Zero allocation on handoff: preallocated ring, fixed-size slots. No malloc on hot path
+
+What to measure:
+|Measurement|Why|
+|-----------|--|
+Parse-to-book p50/p99/p99.9, single-threaded vs SPSC-pipelined| Does ring actually help?
+Ring handoff cost (ns/msg) | overhead paid
+Throughput (msg/sec) both modes | does pipelining improve throughput
+Ring occupancy distribution | is the producer or consumer the bottleneck?
+Cycles/msg producer, cycles/msg consumer | where the time goes
+Book-state hashes, both modes | correctness
+
+# SPSC ring 

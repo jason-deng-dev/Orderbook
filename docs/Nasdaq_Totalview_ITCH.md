@@ -1,5 +1,5 @@
 # Nasdaq Totalview ITCH 5.0 Notes 
-Source: https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/Totalview-ITCH-cloud.pdf#6#1
+Source: https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHspecification.pdf
 
 
 
@@ -23,8 +23,6 @@ Trade (Non-Cross) | P | 44
 Cross Trade | Q | 40
 Broken Trade | B | 19
 
-
-
 # Messages that modify book state
 |Message Type | msgType | Total Length (Bytes)|
 |--|--|--|
@@ -36,3 +34,39 @@ Order Cancel | X | 23
 Order Delete | D | 19
 Order Replace | U | 35
 
+
+**Add Order : No MPID Attribution**
+![alt text](image.png)
+
+**Add Order with MIPD**
+![alt text](image-1.png)
+
+**Order Executed**
+- sent whenever an order on book is excuted in whole or in part
+- possible to recieve several Order Exectued Message for the same order reference number if that order is excuted in several parts
+- by combining executions from Order Executed Messages and Trade Message, possible to build a complete view of all non-cross executions that happen on Nasdaq 
+
+![alt text](image-2.png)
+
+**Order Executed with Price**
+![alt text](image-3.png)
+![alt text](image-4.png)
+
+**Order Cancel**
+- sent whenever order on the book is modified as a result of partial cancellation
+
+![alt text](image-5.png)
+
+**Order Delete Message**
+- sent whenever order on book is being cancelled.
+- All remaining shares are no longer accessible so the order must be removed from the book
+![alt text](image-6.png)
+
+**Order Replace Message**
+- sent whenever order on book has been cancel-replaced
+- all remaining shares from the original  are no longer accesible, and must be removed
+- new order details are provided for the replacement, along wit hteh new order reference number which will be used henceforth
+- Since the side/stock symbol/attribution (if any) cannot be changed by an Order Replace event, these fields are not included in the message
+  - should retain the side/stock symbol and MPID from original Add Order message
+
+![alt text](image-7.png)

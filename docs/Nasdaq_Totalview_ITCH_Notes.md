@@ -1,8 +1,5 @@
 # Nasdaq Totalview ITCH 5.0 Notes 
 Source: https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHspecification.pdf
-
-
-
 # Messages that do not modify book state
 |Message Type | msgType | total length|
 |--|--|--|
@@ -36,31 +33,31 @@ Order Replace | U | 35
 
 
 **Add Order : No MPID Attribution**
-![alt text](image.png)
+![alt text](images/nasdaq/image.png)
 
 **Add Order with MIPD**
-![alt text](image-1.png)
+![alt text](images/nasdaq/image-1.png)
 
 **Order Executed**
 - sent whenever an order on book is excuted in whole or in part
 - possible to recieve several Order Exectued Message for the same order reference number if that order is excuted in several parts
 - by combining executions from Order Executed Messages and Trade Message, possible to build a complete view of all non-cross executions that happen on Nasdaq 
 
-![alt text](image-2.png)
+![alt text](images/nasdaq/image-2.png)
 
 **Order Executed with Price**
-![alt text](image-3.png)
-![alt text](image-4.png)
+![alt text](images/nasdaq/image-3.png)
+![alt text](images/nasdaq/image-4.png)
 
 **Order Cancel**
 - sent whenever order on the book is modified as a result of partial cancellation
 
-![alt text](image-5.png)
+![alt text](images/nasdaq/image-5.png)
 
 **Order Delete Message**
 - sent whenever order on book is being cancelled.
 - All remaining shares are no longer accessible so the order must be removed from the book
-![alt text](image-6.png)
+![alt text](images/nasdaq/image-6.png)
 
 **Order Replace Message**
 - sent whenever order on book has been cancel-replaced
@@ -69,4 +66,4 @@ Order Replace | U | 35
 - Since the side/stock symbol/attribution (if any) cannot be changed by an Order Replace event, these fields are not included in the message
   - should retain the side/stock symbol and MPID from original Add Order message
 
-![alt text](image-7.png)
+![alt text](images/nasdaq/image-7.png)

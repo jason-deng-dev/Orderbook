@@ -67,3 +67,38 @@ Order Replace | U | 35
   - should retain the side/stock symbol and MPID from original Add Order message
 
 ![alt text](images/nasdaq/image-7.png)
+
+# Output shape
+viewing 256 bytes via  `xxd -l 256 benchmarks/fixtures/07302019.NASDAQ_ITCH50`
+```
+00000000: 000c 5300 0000 0009 fa4d 3ad2 6b4f 0027  ..S......M:.kO.'
+00000010: 5200 0100 000a 392d 5f03 8c41 2020 2020  R.....9-_..A    
+00000020: 2020 204e 2000 0000 644e 435a 2050 4e20     N ...dNCZ PN 
+00000030: 314e 0000 0000 4e00 2752 0002 0000 0a39  1N....N.'R.....9
+00000040: 2d60 ee35 4141 2020 2020 2020 4e20 0000  -`.5AA      N ..
+00000050: 0064 4e43 5a20 504e 2031 4e00 0000 014e  .dNCZ PN 1N....N
+00000060: 0027 5200 0300 000a 392d 61a2 0541 4141  .'R.....9-a..AAA
+00000070: 5520 2020 2050 2000 0000 644e 5149 2050  U    P ...dNQI P
+00000080: 4e20 3259 0000 0001 4e00 2752 0004 0000  N 2Y....N.'R....
+00000090: 0a39 2d62 74af 4141 4241 2020 2020 514e  .9-bt.AABA    QN
+000000a0: 0000 0064 4e43 5120 504e 4e32 4e00 0000  ...dNCQ PNN2N...
+000000b0: 014e 0027 5200 0500 000a 392d 6320 0a41  .N.'R.....9-c .A
+000000c0: 4143 2020 2020 204e 2000 0000 644e 435a  AC     N ...dNCZ
+000000d0: 2050 4e20 324e 0000 0000 4e00 2752 0006   PN 2N....N.'R..
+000000e0: 0000 0a39 2d63 c35f 4141 4452 2020 2020  ...9-c._AADR    
+000000f0: 5020 0000 0064 4e51 4920 504e 2032 5900  P ...dNQI PN 2Y.
+```
+
+`000c 5300 0000 0009 fa4d 3ad2 6b4f 0027'`
+|byte | info |
+|--|--|
+000c | length 12
+53 | 'S' System Event
+00 00 |stock locate 0
+00 00 | tracking 0
+09 fa 4d 3a d2 6b | timestamp, nanoseconds since midnight 
+4f | event code 'O' = Start of messages
+
+[00 0c] [53 00 00 00 00 09 fa 4d 3a d2 6b 4f]
+- [00 0c] is the length prefix, takes up 2 bytes
+- thus given our Message length 12 bytes, the next record starts 2+12=14 bytes later

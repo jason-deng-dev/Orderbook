@@ -17,8 +17,7 @@ bool Feed_Handler::Load(const std::string &filepath) {
   in.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(size));
   cursor = buffer.data();
 
-  // gcount returns number of cahracters extracted by the last unformatted read
-  // equal to size means full read
+  // gcount returns number of cahracters extracted by the last unformatted read: equal to size means full read
   return in.gcount() == static_cast<std::streamsize>(size);
 };
 

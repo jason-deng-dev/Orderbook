@@ -1,6 +1,59 @@
+# NASDAQ ITCH 5.0 feed handler
+NASDAQ ITCH 5.0 feed handler: parser → SPSC ring → book builder; measured handoff cost at [X]ns and pipelined throughput at [N]M msgs/sec vs. [M]M single-threaded; book-state hashes identical across modes
+
+Source: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/ (07302019.NASDAQ_ITCH50.gz)
+- this is the file used for benchmarking/correctness testing
+
+# API
+Load()
+- loads the contents of the NASDAQ_ITCH50 file into buffer
+
+GetMessage()
+- skips over non-relevent messages, and returns QueueItem to SPSC
+
+## Buffer data structure
+Why not `std::unique_ptr<uint8_t[]>` or `std::vector`
+- because it forces you to copy the entire NASDAQ_ITCH50 file from disk into RAM
+
+`mmap`
+Zero-Copy from disk
+- allows the OS to simply map the file's existing pages into process's virtual address space. Zero bytes copied (just get a pointer).
+
+Lazy Loading
+- Since ITCH files can be massive, by using mmap, memory footprint stays tiny and startup time is effecively instant
+
+
+## Workflow
+- loads NASDAQ_ITCH50 file into buffer
+- then pushes tiny "header" into SPSC queue
+```c
+struct QueueItem {
+  uint64_t sequence_number; // for gap detection/ordering
+  uint32_t buffer_offset; // where the raw byte start in the ring buffer
+  uint16_t message_length; // how many bytes to read
+  uint16_t padding; // align to 16 bytes
+}
+```
+- Orderbook thread pops the 16-byte QueueItem, and parses them using a switch(msgType)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Nasdaq Totalview ITCH 5.0 Notes 
 Source: https://www.nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHspecification.pdf
-# Messages that do not modify book state
+## Messages that do not modify book state
 |Message Type | msgType | total length|
 |--|--|--|
 System Event Messages | S | 12
@@ -20,7 +73,7 @@ Trade (Non-Cross) | P | 44
 Cross Trade | Q | 40
 Broken Trade | B | 19
 
-# Messages that modify book state
+## Messages that modify book state
 |Message Type | msgType | Total Length (Bytes)|
 |--|--|--|
 Add Order (No MPID) | A | 36
@@ -68,7 +121,7 @@ Order Replace | U | 35
 
 ![alt text](images/nasdaq/image-7.png)
 
-# Output shape
+## Output shape
 viewing 256 bytes via  `xxd -l 256 benchmarks/fixtures/07302019.NASDAQ_ITCH50`
 ```
 00000000: 000c 5300 0000 0009 fa4d 3ad2 6b4f 0027  ..S......M:.kO.'
@@ -102,3 +155,4 @@ viewing 256 bytes via  `xxd -l 256 benchmarks/fixtures/07302019.NASDAQ_ITCH50`
 [00 0c] [53 00 00 00 00 09 fa 4d 3a d2 6b 4f]
 - [00 0c] is the length prefix, takes up 2 bytes
 - thus given our Message length 12 bytes, the next record starts 2+12=14 bytes later
+

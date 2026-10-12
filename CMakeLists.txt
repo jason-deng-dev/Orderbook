@@ -22,6 +22,7 @@ target_include_directories(orderbook_core PUBLIC include)
 
 add_executable(orderbook
   src/main.cpp
+  src/feed_handler.cpp
 )
 
 # provides extra directories to search for libraries
@@ -64,4 +65,8 @@ target_link_libraries(orderbook_bench PRIVATE
   benchmark::benchmark
   benchmark::benchmark_main
   orderbook_core
+)
+
+target_compile_definitions(orderbook PRIVATE
+  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/fixtures"
 )

@@ -242,12 +242,11 @@ Ring occupancy distribution | is the producer or consumer the bottleneck?
 Cycles/msg producer, cycles/msg consumer | where the time goes
 Book-state hashes, both modes | correctness
 
-# NASDAQ ITCH 5.0 feed handler
-NASDAQ ITCH 5.0 feed handler: parser → SPSC ring → book builder; measured handoff cost at [X]ns and pipelined throughput at [N]M msgs/sec vs. [M]M single-threaded; book-state hashes identical across modes
 
-Source: https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/ (07302019.NASDAQ_ITCH50.gz)
-- this is the file used for benchmarking/correctness testing
 
+
+
+# SPSC ring 
 ```
 ITCH file → Parser thread → [SPSC ring] → Book builder thread → Orderbook
 ```
@@ -266,5 +265,3 @@ Throughput (msg/sec) both modes | does pipelining improve throughput
 Ring occupancy distribution | is the producer or consumer the bottleneck?
 Cycles/msg producer, cycles/msg consumer | where the time goes
 Book-state hashes, both modes | correctness
-
-# SPSC ring 

@@ -43,22 +43,20 @@ bool Feed_Handler::Load(const std::string &filepath) {
 
 
 
-// void Feed_Handler::Read(int n) {
-//   for (int i = 0; i < n; ++i) {
-//     // C++23 formats an integer as a lowercase hexadecimal value padded with a leading zero to a minimum wdith of two
-//     // digits
-//     std::print("{:02x}", static_cast<unsigned>(*cursor));
-//     ++cursor;
-//   }
-// }
+void Feed_Handler::Read(int n) {
+  for (int i = 0; i < n; ++i) {
+    std::print("{:02x}", static_cast<unsigned>(*cursor_));
+    ++cursor_;
+  }
+}
 
-// bool Feed_Handler::ReadMessage() {
+bool Feed_Handler::GetMessage() {
 
-//   uint16_t msgLen = (static_cast<uint16_t>(cursor[0]) << 8) | static_cast<uint16_t>(cursor[1]);
-//   cursor += 2;
-//   auto msgType = static_cast<char>(cursor[0]);
-//   ++cursor;
-//   std::cout << "msgLen:" << msgLen << " msgType" << msgType << '\n';
+  uint16_t msgLen = (static_cast<uint16_t>(cursor_[0]) << 8) | static_cast<uint16_t>(cursor_[1]);
+  cursor_ += 2;
+  auto msgType = static_cast<char>(cursor_[0]);
+  ++cursor_;
+  std::cout << "msgLen:" << msgLen << " msgType" << msgType << '\n';
 
-//   return true;
-// }
+  return true;
+}

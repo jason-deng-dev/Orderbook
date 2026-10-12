@@ -10,6 +10,7 @@
 class Feed_Handler {
 public:
   bool Load(const std::string &filePath);
+  void Read(int n);
   bool GetMessage();
 
   ~Feed_Handler() {

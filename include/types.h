@@ -82,3 +82,8 @@ static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, Or
   return OrderEvent{
       .ts = ts, .orderId = id, .volume = newVolume, .type = EventType::Modify, .orderbookError = orderbookError};
 }
+
+struct alignas(8) QueueItem  {
+  uint32_t offset; // 4 bytes
+  uint16_t length; // 2 bytes
+};

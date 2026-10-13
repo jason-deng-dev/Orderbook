@@ -50,8 +50,8 @@ void Feed_Handler::Read(int n) {
   }
 }
 
-bool Feed_Handler::GetMessage() {
-
+// push to Spsc queue, then skip to next state modifying message (no delay when sending next message)
+bool Feed_Handler::PushNextToQueue(SpscQueue& queue) {
   uint16_t msgLen = (static_cast<uint16_t>(cursor_[0]) << 8) | static_cast<uint16_t>(cursor_[1]);
   cursor_ += 2;
   auto msgType = static_cast<char>(cursor_[0]);

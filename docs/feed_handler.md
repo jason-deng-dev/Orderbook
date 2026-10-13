@@ -27,14 +27,12 @@ Lazy Loading
 - loads NASDAQ_ITCH50 file into buffer
 - then pushes tiny "header" into SPSC queue
 ```c
-struct QueueItem {
-  uint64_t sequence_number; // for gap detection/ordering
-  uint32_t buffer_offset; // where the raw byte start in the ring buffer
-  uint16_t message_length; // how many bytes to read
-  uint16_t padding; // align to 16 bytes
+struct alignas(8) QueueItem{
+  uint32_t offset; // 4 bytes: cursor_ - buffer_
+  uint16_t length; // 2 bytes: length of ITCH message
 }
 ```
-- Orderbook thread pops the 16-byte QueueItem, and parses them using a switch(msgType)
+- Orderbook thread pops the 8-byte QueueItem and parses
 
 
 

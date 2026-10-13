@@ -5,13 +5,14 @@
 #include <string>
 #include <sys/mman.h>
 #include <unordered_set>
+#include "spsc_queue.h"
 #include <vector>
 
 class Feed_Handler {
 public:
   bool Load(const std::string &filePath);
   void Read(int n);
-  bool GetMessage();
+  bool PushNextToQueue(SpscQueue& queue);
 
   ~Feed_Handler() {
     if (buffer_) {

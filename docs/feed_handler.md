@@ -26,13 +26,17 @@ Lazy Loading
 ## Workflow
 - loads NASDAQ_ITCH50 file into buffer
 - then pushes tiny "header" into SPSC queue
+- Orderbook thread pops the 8-byte QueueItem and parses
+
+## header data structure to SPSC queue
 ```c
 struct alignas(8) QueueItem{
   uint32_t offset; // 4 bytes: cursor_ - buffer_
   uint16_t length; // 2 bytes: length of ITCH message
 }
 ```
-- Orderbook thread pops the 8-byte QueueItem and parses
+
+
 
 
 

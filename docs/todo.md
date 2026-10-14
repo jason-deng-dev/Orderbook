@@ -11,4 +11,13 @@
   - [x] EventLog
 - [x] `Orderbook_Vector` (reverse-ordered level vector, search policy as template parameter)
 - [x] Search policies: `LinearSearch`, `BinarySearch`, `BranchlessBinarySearch`
- 
+
+# Feed Handler
+- [x] setup
+- [x] load
+- [ ] push to SPSC Fifo
+
+# SPSC Fifo
+- [x] base version working
+  - [x] tests working
+  - [ ] benchmark test

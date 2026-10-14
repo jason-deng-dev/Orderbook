@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 4.3)
 project(Orderbook)
- 
+
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON) 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
@@ -13,7 +13,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(googletest)
 
-add_library(orderbook_core 
+add_library(orderbook_core
   src/orderbook_map.cpp
 )
 
@@ -61,8 +61,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googlebenchmark)
 
-add_executable(orderbook_bench benchmarks/main.cpp)
-target_link_libraries(orderbook_bench PRIVATE
+add_executable(benchmarks
+  benchmarks/main.cpp
+  benchmarks/fifo.cpp
+)
+target_link_libraries(benchmarks PRIVATE
   benchmark::benchmark
   benchmark::benchmark_main
   orderbook_core

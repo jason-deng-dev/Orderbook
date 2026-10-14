@@ -1,5 +1,3 @@
-
-
 #include <atomic>
 #include <cstddef>
 #include <memory>
@@ -15,25 +13,25 @@ class SpscFifo : private Alloc {
   std::atomic<std::size_t> popCursor_{};
 
 public:
-  explicit SpscFifo(Alloc const &alloc = Alloc{}) : Alloc { alloc } {};
-  ~SpscFifo();
+  explicit SpscFifo(Alloc const &alloc = Alloc{}) : Alloc{alloc} {};
+  ~SpscFifo() { Traits::deallocate(*this, ring_, capacity_); };
 
   auto capacity() const { return capacity_; }
   auto size() const { return pushCursor_ - popCursor_; }
   auto empty() const { return size() == 0; }
   auto full() const { return size() == capacity(); }
-
+  // hash = cursor & (capacity-1)
   auto push(T const &value) {
     if (full()) return false;
-    new (&ring_[pushCursor_ % capacity_]) T(value);
+    new (&ring_[pushCursor_ & (capacity_ - 1)]) T(value);
     ++pushCursor_;
     return true;
   }
 
   auto pop(T &value) {
     if (empty()) return false;
-    value = ring_[popCursor_ % capacity_];
-    ring_[popCursor_ % capacity_].~T();
+    value = ring_[popCursor_ & (capacity_ - 1)];
+    ring_[popCursor_ & (capacity_ - 1)].~T();
     ++popCursor_;
     return true;
   }

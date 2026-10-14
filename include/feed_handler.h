@@ -5,7 +5,7 @@
 #include <string>
 #include <sys/mman.h>
 #include <unordered_set>
-#include "spsc_queue.h"
+#include "spsc_fifo.h"
 #include <vector>
 
 class Feed_Handler {

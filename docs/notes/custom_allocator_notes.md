@@ -128,31 +128,8 @@ std::allocator_traits<MyAlloc>::construct(my_alloc, p, val); // Modern way
 - Let allocator_traits help:
   - DOn't worry about implementing everything yourself
 
-# Allocator Designs
 
-Pool allocator
-
-- Recyling objects of same size
-
-Stack allocator
-
-- Ultra fast and temporary
-
-```c
-struct TestObject{
-  int id;
-  double value;
-  TestObject(int i = 0, double v = 0.0) : id(i), value(v) {
-    std::cout<< "TestObject(" << id << ", " << value << ") created\n";
-  }
-
-  ~TestObject() {
-    std::cout << "TestObject(" << id << ", " << value << ") destroyed\n";
-  }
-}
-```
-
-## Pool Allocator
+# Pool Allocator
 ![alt text](image-3.png)
 - lighter block = free and avaialble
 - orange block = taken
@@ -290,19 +267,39 @@ for (int i = 0; i < 4; ++i) {
 }
 ```
 
-Pros:
-- extremely fast
-- eliminates memory fragmentation for object types
-
-Cons:
-- only works for single, fixed size
-- reserves a potentially large block of memory up front
-
-What its best for?
-- nodes in a list/tree/graph
-- Game objects like bullets, enemies, particles
-- any systems that frequently creates/destroyes many objects of the same size
-
-
-## Stack Allocator
+# Stack Allocator
 ![alt text](image-9.png)
+![alt text](image-10.png)
+![alt text](image-11.png)
+![alt text](image-13.png)
+
+with stack allocation pattern, you are not stuck to one type of object,
+ you can use multiple types, and it is still a very fast allocation because the actual memory was allocated all in the beginning of the call
+ - all we are doing is creating these objects inside the memory that we already have
+
+![alt text](image-14.png)
+
+We can only deallocate everything else before you can deallocate a block!
+![alt text](image-15.png)
+
+Using checkpoint markers, which we can use multiple
+- it becomes very fast to deallocate back to a check point marker
+
+![alt text](image-16.png)
+
+# Summary of Designs
+![alt text](image-17.png)
+
+| Property | Pool | Stack |
+|---|---|---|
+| **Summary** | Recycles objects of the same size | Ultra fast and temporary |
+| **Object size** | Single, fixed | Any (LIFO) |
+| **Speed** | Extremely fast | Fastest possible |
+| **Fragmentation** | None (per object type) | None |
+| **Free cost** | Return to free list | Move a single pointer |
+| **Free order** | Any | LIFO only |
+| **Upfront cost** | Potentially large block | Large block |
+| **Lifetime support** | Any | Short-lived |
+| **Best for** | Nodes in list/tree/graph, game objects (bullets, enemies, particles), same-size create/destroy churn | Scratchpad memory, per-frame allocations, short-lived data |
+
+# Practical Implementation: TrackingAllocator

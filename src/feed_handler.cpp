@@ -51,13 +51,13 @@ void Feed_Handler::Read(int n) {
   }
 }
 
-// push to Spsc queue, then skip to next state modifying message (no delay when sending next message)
-bool Feed_Handler::PushNextToQueue(SpscFifo<QueueItem>& queue) {
-  uint16_t msgLen = (static_cast<uint16_t>(cursor_[0]) << 8) | static_cast<uint16_t>(cursor_[1]);
-  cursor_ += 2;
-  auto msgType = static_cast<char>(cursor_[0]);
-  ++cursor_;
-  std::cout << "msgLen:" << msgLen << " msgType" << msgType << '\n';
+// // push to Spsc queue, then skip to next state modifying message (no delay when sending next message)
+// bool Feed_Handler::PushNextToQueue(SpscFifo<QueueItem>& queue) {
+//   uint16_t msgLen = (static_cast<uint16_t>(cursor_[0]) << 8) | static_cast<uint16_t>(cursor_[1]);
+//   cursor_ += 2;
+//   auto msgType = static_cast<char>(cursor_[0]);
+//   ++cursor_;
+//   std::cout << "msgLen:" << msgLen << " msgType" << msgType << '\n';
 
-  return true;
-}
+//   return true;
+// }

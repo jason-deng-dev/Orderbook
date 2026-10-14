@@ -12,7 +12,7 @@ class Feed_Handler {
 public:
   bool Load(const std::string &filePath);
   void Read(int n);
-  bool PushNextToQueue(SpscFifo<QueueItem>& queue);
+  // bool PushNextToQueue(SpscFifo<QueueItem,5>& queue);
 
   ~Feed_Handler() {
     if (buffer_) {

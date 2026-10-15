@@ -3,13 +3,12 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 
 inline constexpr bool isPowerOfTwo(size_t n) { return n != 0 && (n & (n - 1)) == 0; }
 
-template <typename T, size_t cap, typename Alloc = std::allocator<T>>
+template <typename T, typename Alloc = std::allocator<T>>
 class SpscFifo : private Alloc {
-  static_assert(isPowerOfTwo(cap), "SpscFifo capacity must be power of two");
-
   using Traits = std::allocator_traits<Alloc>;
   size_t capacity_;
   T *ring_;
@@ -18,8 +17,10 @@ class SpscFifo : private Alloc {
   std::atomic<std::size_t> popCursor_{};
 
 public:
-  explicit SpscFifo(Alloc const &alloc = Alloc{})
-      : Alloc(alloc), capacity_(cap), ring_(Traits::allocate(*this, capacity_)) {}
+  explicit SpscFifo(size_t cap, Alloc const &alloc = Alloc{})
+      : Alloc(alloc), capacity_(cap), ring_(Traits::allocate(*this, capacity_)) {
+    if (!isPowerOfTwo(cap)) throw std::invalid_argument("capacity must be a power of 2!");
+  }
   ~SpscFifo() {
     while (not empty()) {
       ring_[popCursor_ & (capacity_ - 1)].~T();

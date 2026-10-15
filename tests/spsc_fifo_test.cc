@@ -7,14 +7,14 @@
 #include <thread>
 
 TEST(Spsc_Fifo, Init) {
-  SpscFifo<int,4> fifo;
+  SpscFifo<int> fifo{4};
   EXPECT_EQ(fifo.capacity(), 4);
   EXPECT_EQ(fifo.size(), 0);
   EXPECT_TRUE(fifo.empty());
 }
 
 TEST(Spsc_Fifo, pushBaseCase) {
-  SpscFifo<int,4> fifo;
+  SpscFifo<int> fifo{4};
   EXPECT_EQ(fifo.size(), 0);
   fifo.push(100);
   EXPECT_EQ(fifo.size(), 1);
@@ -25,7 +25,7 @@ TEST(Spsc_Fifo, pushBaseCase) {
 }
 
 TEST(Spsc_Fifo, popBaseCase) {
-  SpscFifo<int,4> fifo;
+  SpscFifo<int> fifo{4};
   fifo.push(1);
   fifo.push(2);
   EXPECT_EQ(fifo.size(), 2);
@@ -76,7 +76,7 @@ struct Tracked {
 
 TEST(Spsc_Fifo, fullAndPushWhenFull) {
   constexpr size_t kCapacity = 8;
-  SpscFifo<int, kCapacity> fifo;
+  SpscFifo<int> fifo{kCapacity};
 
   EXPECT_FALSE(fifo.full());
 
@@ -114,7 +114,7 @@ TEST(Spsc_Fifo, fullAndPushWhenFull) {
 }
 
 TEST(Spsc_Fifo, emptyAndPopWhenEmpty) {
-  SpscFifo<int, 8> fifo;
+  SpscFifo<int> fifo{8};
 
   EXPECT_TRUE(fifo.empty());
   EXPECT_FALSE(fifo.full());
@@ -129,7 +129,7 @@ TEST(Spsc_Fifo, emptyAndPopWhenEmpty) {
 }
 
 TEST(Spsc_Fifo, popOnEmptyLeavesValueUntouched) {
-  SpscFifo<int, 8> fifo;
+  SpscFifo<int> fifo{8};
 
   int out = 1234;
   EXPECT_FALSE(fifo.pop(out));
@@ -137,7 +137,7 @@ TEST(Spsc_Fifo, popOnEmptyLeavesValueUntouched) {
 }
 
 TEST(Spsc_Fifo, capacityOne) {
-  SpscFifo<int, 1> fifo;
+  SpscFifo<int> fifo{1};
   EXPECT_EQ(fifo.capacity(), 1);
   EXPECT_TRUE(fifo.empty());
   EXPECT_FALSE(fifo.full());
@@ -160,7 +160,7 @@ TEST(Spsc_Fifo, capacityOne) {
 }
 
 TEST(Spsc_Fifo, capacityTwoWrap) {
-  SpscFifo<int, 2> fifo;
+  SpscFifo<int> fifo{2};
 
   for (int i = 0; i < 10; ++i) {
     ASSERT_TRUE(fifo.push(i)) << "push " << i;
@@ -184,7 +184,7 @@ TEST(Spsc_Fifo, capacityTwoWrap) {
 
 TEST(Spsc_Fifo, fifoOrdering) {
   constexpr int kCount = 1000;
-  SpscFifo<int, 1024> fifo;
+  SpscFifo<int> fifo{1024};
 
   for (int i = 0; i < kCount; ++i) {
     ASSERT_TRUE(fifo.push(i)) << "push " << i;
@@ -202,7 +202,7 @@ TEST(Spsc_Fifo, fifoOrdering) {
 // 32 pushes through a 4-slot ring: the index wraps 8 times.
 TEST(Spsc_Fifo, wrapAroundEmptyToEmpty) {
   constexpr size_t kCapacity = 4;
-  SpscFifo<int, kCapacity> fifo;
+  SpscFifo<int> fifo{kCapacity};
 
   for (int i = 0; i < 32; ++i) {
     ASSERT_TRUE(fifo.push(i)) << "push " << i;
@@ -217,7 +217,7 @@ TEST(Spsc_Fifo, wrapAroundEmptyToEmpty) {
 // while the FIFO is neither empty nor full.
 TEST(Spsc_Fifo, wrapAroundWhilePartiallyFull) {
   constexpr size_t kCapacity = 4;
-  SpscFifo<int, kCapacity> fifo;
+  SpscFifo<int> fifo{kCapacity};
 
   ASSERT_TRUE(fifo.push(0));
   ASSERT_TRUE(fifo.push(1));
@@ -233,7 +233,7 @@ TEST(Spsc_Fifo, wrapAroundWhilePartiallyFull) {
 
 TEST(Spsc_Fifo, manyWrapCycles) {
   constexpr int kCount = 10000;
-  SpscFifo<int, 2> fifo;
+  SpscFifo<int> fifo{2};
 
   for (int i = 0; i < kCount; ++i) {
     ASSERT_TRUE(fifo.push(i)) << "push " << i;
@@ -247,7 +247,7 @@ TEST(Spsc_Fifo, manyWrapCycles) {
 // so the test never asks for an operation it knows will be rejected.
 TEST(Spsc_Fifo, interleavedPushPop) {
   constexpr size_t kCapacity = 8;
-  SpscFifo<int, kCapacity> fifo;
+  SpscFifo<int> fifo{kCapacity};
 
   int nextPush = 0;
   int nextPop = 0;
@@ -280,7 +280,7 @@ TEST(Spsc_Fifo, interleavedPushPop) {
 
 TEST(Spsc_Fifo, indicesStayInRange) {
   constexpr size_t kCapacity = 4;
-  SpscFifo<int, kCapacity> fifo;
+  SpscFifo<int> fifo{kCapacity};
 
   for (int i = 0; i < 64; ++i) {
     ASSERT_TRUE(fifo.push(i)) << "i " << i;
@@ -298,7 +298,7 @@ TEST(Spsc_Fifo, indicesStayInRange) {
 
 TEST(Spsc_Fifo, popDestroysPoppedElement) {
   Tracked::reset();
-  SpscFifo<Tracked, 8> fifo;
+  SpscFifo<Tracked> fifo{8};
 
   ASSERT_TRUE(fifo.push(Tracked{7}));
 
@@ -312,7 +312,7 @@ TEST(Spsc_Fifo, popDestroysPoppedElement) {
 TEST(Spsc_Fifo, destroysElementsOnScopeExit) {
   Tracked::reset();
   {
-    SpscFifo<Tracked, 8> fifo;
+    SpscFifo<Tracked> fifo{8};
     ASSERT_TRUE(fifo.push(Tracked{1}));
     ASSERT_TRUE(fifo.push(Tracked{2}));
     ASSERT_TRUE(fifo.push(Tracked{3}));
@@ -324,7 +324,7 @@ TEST(Spsc_Fifo, destroysElementsOnScopeExit) {
 TEST(Spsc_Fifo, destroysFullRingOnScopeExit) {
   Tracked::reset();
   {
-    SpscFifo<Tracked, 8> fifo;
+    SpscFifo<Tracked> fifo{8};
     for (int i = 0; i < 8; ++i) {
       ASSERT_TRUE(fifo.push(Tracked{i}));
     }
@@ -337,7 +337,7 @@ TEST(Spsc_Fifo, destroysFullRingOnScopeExit) {
 TEST(Spsc_Fifo, destroysRemainingElementsAfterPartialDrain) {
   Tracked::reset();
   {
-    SpscFifo<Tracked, 8> fifo;
+    SpscFifo<Tracked> fifo{8};
     for (int i = 0; i < 8; ++i) {
       ASSERT_TRUE(fifo.push(Tracked{i}));
     }
@@ -356,7 +356,7 @@ TEST(Spsc_Fifo, destroysRemainingElementsAfterPartialDrain) {
 TEST(Spsc_Fifo, reusesSlotAfterDestroy) {
   Tracked::reset();
   {
-    SpscFifo<Tracked, 2> fifo;
+    SpscFifo<Tracked> fifo{2};
 
     for (int i = 0; i < 20; ++i) {
       ASSERT_TRUE(fifo.push(Tracked{i})) << "push " << i;
@@ -379,7 +379,7 @@ TEST(Spsc_Fifo, reusesSlotAfterDestroy) {
 
 TEST(Spsc_Fifo, threadedProducerConsumer) {
   constexpr int kCount = 200000;
-  SpscFifo<int, 1024> fifo;
+  SpscFifo<int> fifo{1024};
 
   std::atomic<int> popped{0};
   std::atomic<int> mismatches{0};
@@ -420,7 +420,7 @@ TEST(Spsc_Fifo, threadedProducerConsumer) {
 // consumer to see an empty one many times.
 TEST(Spsc_Fifo, threadedTightRing) {
   constexpr int kCount = 100000;
-  SpscFifo<int, 2> fifo;
+  SpscFifo<int> fifo{2};
 
   std::atomic<int> popped{0};
   std::atomic<int> mismatches{0};

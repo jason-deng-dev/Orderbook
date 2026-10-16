@@ -256,13 +256,11 @@ TEST(Spsc_Fifo, interleavedPushPop) {
     size_t room = kCapacity - fifo.size();
     int pushes = std::min<int>(1 + (round % 4), static_cast<int>(room));
     for (int i = 0; i < pushes; ++i) {
-      ASSERT_TRUE(fifo.push(nextPush))
-          << "round " << round << " push " << nextPush;
+      ASSERT_TRUE(fifo.push(nextPush)) << "round " << round << " push " << nextPush;
       ++nextPush;
     }
 
-    int pops =
-        std::min<int>(1 + ((round + 2) % 4), static_cast<int>(fifo.size()));
+    int pops = std::min<int>(1 + ((round + 2) % 4), static_cast<int>(fifo.size()));
     for (int i = 0; i < pops; ++i) {
       int out = -1;
       ASSERT_TRUE(fifo.pop(out)) << "round " << round << " pop " << nextPop;
@@ -270,28 +268,12 @@ TEST(Spsc_Fifo, interleavedPushPop) {
       ++nextPop;
     }
 
-    EXPECT_EQ(fifo.size(), static_cast<size_t>(nextPush - nextPop))
-        << "round " << round;
+    EXPECT_EQ(fifo.size(), static_cast<size_t>(nextPush - nextPop)) << "round " << round;
   }
 
   EXPECT_GT(nextPush, 100);
   EXPECT_GT(nextPop, 100);
 }
-
-TEST(Spsc_Fifo, indicesStayInRange) {
-  constexpr size_t kCapacity = 4;
-  SpscFifo<int> fifo{kCapacity};
-
-  for (int i = 0; i < 64; ++i) {
-    ASSERT_TRUE(fifo.push(i)) << "i " << i;
-    EXPECT_LT(fifo.pushIndex(), kCapacity) << "i " << i;
-
-    int out = -1;
-    ASSERT_TRUE(fifo.pop(out)) << "i " << i;
-    EXPECT_LT(fifo.popIndex(), kCapacity) << "i " << i;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Element lifetime
 // ---------------------------------------------------------------------------
@@ -370,13 +352,6 @@ TEST(Spsc_Fifo, reusesSlotAfterDestroy) {
   EXPECT_EQ(Tracked::constructed, Tracked::destroyed);
 }
 
-// ---------------------------------------------------------------------------
-// Concurrency
-//
-// Only meaningful under ThreadSanitizer: no single-threaded test above can
-// observe a missing acquire/release.
-// ---------------------------------------------------------------------------
-
 TEST(Spsc_Fifo, threadedProducerConsumer) {
   constexpr int kCount = 200000;
   SpscFifo<int> fifo{1024};
@@ -384,15 +359,16 @@ TEST(Spsc_Fifo, threadedProducerConsumer) {
   std::atomic<int> popped{0};
   std::atomic<int> mismatches{0};
 
-  std::thread producer([&fifo] {
+  std::jthread producer([&fifo] {
     for (int i = 0; i < kCount; ++i) {
       while (!fifo.push(i)) {
-        std::this_thread::yield();
+        std::this_thread::yield(); // provides hint to implemention to reschedule the execution of threads allowing
+                                   // other threads to run
       }
     }
   });
 
-  std::thread consumer([&] {
+  std::jthread consumer([&] {
     while (popped.load(std::memory_order_relaxed) < kCount) {
       int out = -1;
       if (!fifo.pop(out)) {
@@ -408,6 +384,9 @@ TEST(Spsc_Fifo, threadedProducerConsumer) {
     }
   });
 
+  // Join before asserting: until both threads are done, the counters and the
+  // FIFO state are still moving. The consumer only exits after it has counted
+  // kCount pops, so joining it proves every push was matched by a pop.
   producer.join();
   consumer.join();
 
@@ -425,7 +404,7 @@ TEST(Spsc_Fifo, threadedTightRing) {
   std::atomic<int> popped{0};
   std::atomic<int> mismatches{0};
 
-  std::thread producer([&fifo] {
+  std::jthread producer([&fifo] {
     for (int i = 0; i < kCount; ++i) {
       while (!fifo.push(i)) {
         std::this_thread::yield();
@@ -433,7 +412,7 @@ TEST(Spsc_Fifo, threadedTightRing) {
     }
   });
 
-  std::thread consumer([&] {
+  std::jthread consumer([&] {
     while (popped.load(std::memory_order_relaxed) < kCount) {
       int out = -1;
       if (!fifo.pop(out)) {

@@ -21,3 +21,7 @@
 - [x] base version working
   - [x] tests working
   - [ ] benchmark test
+- [ ] optimizations
+  - [x] memory ordering
+  - [x] false sharing prevention via padding
+  - [ ] cache push/popCursor

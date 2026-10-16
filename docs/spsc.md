@@ -31,7 +31,7 @@ Disadvantages:
 
 # push/pop cursor implementation
 
-64 bit unsigned integers so there are ltos of numbers available for use
+64 bit unsigned integers so there are lots of numbers available for use
 
 - start at 0, everytime we push we increment push cursor
 - probally won't run out (especially if system reboots periodically, which is standard practice for orderbook implementations)
@@ -89,15 +89,27 @@ say cursor implemented to 10
 ```
 
 # Optimizations
+
 - %operator vs &operator implementation
 - memory ordering relaxed vs all sequentially consistent
 - false sharing prevention vs no false sharing prevention
-  - we achieve false sharing prevention through `alignas(std::hardware_destructive_interference_size)` between push cursor and pop cursor
-  - achieve false sharing prevention between push/pop cursors and adjacent objects through `char padding_[std::hardware_destructive_interference_size - sizeof(std::size_t)];`
+  - we achieve false sharing prevention through `alignas(kCacheLineSize)` between push cursor and pop cursor
+  - achieve false sharing prevention between push/pop cursors and adjacent objects through `char padding_[skCacheLineSize - sizeof(std::size_t)];`
 - caching push/popCursor via cachedPopCursor and cachedPushCursor
 
+# False sharing prevention
+Because of MESI cache coherence protocol, when Core 0 (Producer) writes to pushCursor, the cache line holding both cursors is marked "Modified" and invaliadted on Core 1 (Consumer).
 
-# Measurements
+- Core 1 is forced to fetch it from L3 or main memory on next read
+
+By using alignas(kCacheLineSize) which we set to 64, on both our push and pop cursor
+```c
+alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
+alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
+```
+- it provides us with the offset between 2 objects to avoid false sharing on most modern CPU with cache line of 64 bytes.
+
+# Benchmark
 
 | Measurement                                                    | Why                                         |
 | -------------------------------------------------------------- | ------------------------------------------- |
@@ -107,3 +119,57 @@ say cursor implemented to 10
 | Ring occupancy distribution                                    | is the producer or consumer the bottleneck? |
 | Cycles/msg producer, cycles/msg consumer                       | where the time goes                         |
 | Book-state hashes, both modes                                  | correctness                                 |
+
+Important things to consider
+
+- perf stat
+  - if high cache miss rate
+    - probably false sharing/data-layout issue
+  - if high context-switch count
+    - threads are blocking frequently (waiting on mmutex or I/O or thread count far exceeds number of CPU cores)
+  - if high cpu-migration count
+    - likely means OS is moving threads from one core to another (invalidates L1/L2 caches) pin threads using `taskset`
+
+```bash
+# pin to cores 0 and 1
+taskset -c 0,1 ./benchmark
+```
+
+- avoid compiler optimization by using GBench
+  - benchmark::DoNoteOptimize(result)
+    - Tell the compiler the value of expr "might" be used externally; do not optimize it away
+  - benchmark::ClobberMemory()
+    - Tell the compiler that all memory state may be modified externally
+
+```c
+for (auto _ : state) {
+    int result = expensive_computation();
+    benchmark::DoNotOptimize(result);
+    benchmark::ClobberMemory();
+}
+```
+
+- avoid warm up
+  - by using GBench's KeepRunning()
+  - or if allocated large block of memory outside loop, run few manual passes before loop
+
+```c
+static void bm_with_warmup(benchmark::State& state)
+{
+    std::vector<int> data(10000);
+
+    // Warm-up: pull the data into the cache
+    for (int i = 0; i < 100; ++i) {
+        volatile int dummy = data[0];
+        (void)dummy;
+    }
+
+    for (auto _ : state) {
+        int sum = 0;
+        for (int v : data) {
+            sum += v;
+        }
+        benchmark::DoNotOptimize(sum);
+    }
+}
+```

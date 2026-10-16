@@ -1,7 +1,7 @@
 # Concurrency Performance Testing and Benchmarking
 "https://awesome-embedded-learning-studio.github.io/Tutorial_AwesomeModernCPP/en/vol5-concurrency/ch08-debug-testing-perf/02-concurrency-benchmarks"
 
-# Multithread benchmark example:
+## Multithread benchmark example:
 ```c
 #include <benchmark/benchmark.h>
 #include <atomic>
@@ -33,9 +33,9 @@ BENCHMARK_MAIN();
 - UseRealTime() is important since without it, framework reports CPU time by default, and under multithreading the CPU time is the sum across all hredas
 - ClobberMemroy() is a compiler-level memeory barrier that tells compiler "do not cache any memory state", preventing the optimizer from optiming our atomic operations away
 
-# Design pitfalls with Concurrent Benchmarking
+## Design pitfalls with Concurrent Benchmarking
 
-## Warm-up: Cold Start and Steady State
+### Warm-up: Cold Start and Steady State
 CPU's cache Hierarchy(L1,L2,L3) affects performance by orders of magnitude
 - first time you access data, it loads from main memory costing 100-300 CPU cycles
 - on second access its in L1 cache and takes only 3-4 cycles
@@ -65,7 +65,7 @@ static void bm_with_warmup(benchmark::State& state)
     }
 }
 ```
-## Compiler Optimization
+### Compiler Optimization
 Compiler's job is to make code faster, but your goal is to measure code's raw speed
 
 GBench provides 
@@ -83,11 +83,11 @@ for (auto _ : state) {
 - DoNoteOptimize guarantees that result is not optimized away
 - ClobberMemory guarantees that each iteration's memory reads are not optimized into "we already read this last time, just reuse it"
 
-## False Sharing
+### False Sharing
 Two-threads each modify differnt variables, but those variables happen to sit on same cache line (usually 64 bytes), so every write has to invalidate the other core's copy of htel ine
 - with padding, each counter owns a cache line, threads stop interfering with one another and performance is nearly independent of thread count
 
-## Thread Creation: Don't spawn threads inside loop
+### Thread Creation: Don't spawn threads inside loop
 Do note create and destroy threads inside benchmark loop
 - it is an expensive operation typically cost 50-200 microseconds
 
@@ -95,7 +95,7 @@ better to create threads outside loop (with thread pool, for instance) and only 
 - GBench's Threads(n) already creates the threads for you outside the loop
 - all you need to do inside loop body is actual work
 
-# perf stat
+## perf stat
 ```bash
 # Run the program directly
 perf stat ./your_program

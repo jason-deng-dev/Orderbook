@@ -109,6 +109,21 @@ alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 ```
 - it provides us with the offset between 2 objects to avoid false sharing on most modern CPU with cache line of 64 bytes.
 
+# Why cache push / pop cursor?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Benchmark
 
 | Measurement                                                    | Why                                         |
@@ -122,24 +137,68 @@ alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 
 Important things to consider
 
-- perf stat
-  - if high cache miss rate
-    - probably false sharing/data-layout issue
-  - if high context-switch count
-    - threads are blocking frequently (waiting on mmutex or I/O or thread count far exceeds number of CPU cores)
-  - if high cpu-migration count
-    - likely means OS is moving threads from one core to another (invalidates L1/L2 caches) pin threads using `taskset`
+## Use perf stat as needed
+perf stat
+- if high cache miss rate
+  - probably false sharing/data-layout issue
+- if high context-switch count
+  - threads are blocking frequently (waiting on mmutex or I/O or thread count far exceeds number of CPU cores)
+<!-- - if high cpu-migration count -->
+  - likely means OS is moving threads from one core to another (invalidates L1/L2 caches) pin threads using `taskset`
 
+## CPU pinning
 ```bash
-# pin to cores 0 and 1
-taskset -c 0,1 ./benchmark
-```
+$ lscpu -e
 
-- avoid compiler optimization by using GBench
-  - benchmark::DoNoteOptimize(result)
-    - Tell the compiler the value of expr "might" be used externally; do not optimize it away
-  - benchmark::ClobberMemory()
-    - Tell the compiler that all memory state may be modified externally
+CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
+  0    0      0    0 0:0:0:0          yes
+  1    0      0    0 0:0:0:0          yes
+  2    0      0    1 1:1:1:0          yes
+  3    0      0    1 1:1:1:0          yes
+  4    0      0    2 2:2:2:0          yes
+  5    0      0    2 2:2:2:0          yes
+  6    0      0    3 3:3:3:0          yes
+  7    0      0    3 3:3:3:0          yes
+  8    0      0    4 4:4:4:0          yes
+  9    0      0    4 4:4:4:0          yes
+ 10    0      0    5 5:5:5:0          yes
+ 11    0      0    5 5:5:5:0          yes
+ 12    0      0    6 6:6:6:0          yes
+ 13    0      0    6 6:6:6:0          yes
+ 14    0      0    7 7:7:7:0          yes
+ 15    0      0    7 7:7:7:0          yes
+```
+```bash
+# pin to cores 0 and 2
+taskset -c 2,4 ./benchmark
+```
+- Logical CPUs 0 and 1 are SMT siblingso n the same physical core (core 0)
+- To avoid SMT contention in the two-threaded SPSC benchmark, I will pin the consumer and consumer to logical CPUs 0 and 2
+  - which resides on distinct physical cores (core 0 and core 1)
+  - this ensures the measurement reflects inter-core communication rather than sibling hyperthreaded contention
+
+## benchmark in release build
+
+## Compiler Optimizations / Link-Time Optimization (LTO)
+```c
+target_compile_options(benchmarks PRIVATE
+  $<$<CONFIG:Release>:-O3 -march=native -mtune=native -flto>
+)
+
+target_link_options(benchmarks PRIVATE
+  $<$<CONFIG:Release>: -flto>
+)
+```
+- `-O3` anables the most aggressive optimization level
+- `-march=native` generates the code for the specific CPU we are compiling on, utilizing all avilable instruction set
+- `mtune=native` tunes the code generated for your specific CPU model without changing instruction set
+
+
+## avoid compiler optimization by using GBench
+- benchmark::DoNoteOptimize(result)
+  - Tell the compiler the value of expr "might" be used externally; do not optimize it away
+- benchmark::ClobberMemory()
+  - Tell the compiler that all memory state may be modified externally
 
 ```c
 for (auto _ : state) {
@@ -149,9 +208,9 @@ for (auto _ : state) {
 }
 ```
 
-- avoid warm up
-  - by using GBench's KeepRunning()
-  - or if allocated large block of memory outside loop, run few manual passes before loop
+## avoid warm up
+- by using GBench's KeepRunning()
+- or if allocated large block of memory outside loop, run few manual passes before loop
 
 ```c
 static void bm_with_warmup(benchmark::State& state)

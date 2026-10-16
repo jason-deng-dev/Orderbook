@@ -63,7 +63,8 @@ FetchContent_MakeAvailable(googlebenchmark)
 
 add_executable(benchmarks
   benchmarks/main.cpp
-  benchmarks/fifo.cpp
+  benchmarks/bm_fifo.cpp
+  benchmarks/bm_feedHandler.cpp
 )
 target_link_libraries(benchmarks PRIVATE
   benchmark::benchmark
@@ -74,3 +75,8 @@ target_link_libraries(benchmarks PRIVATE
 target_compile_definitions(orderbook PRIVATE
   FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/fixtures"
 )
+
+target_compile_options(benchmarks PRIVATE
+  $<$<CONFIG:Release>:-O3 -march=native -mtune=native >
+)
+

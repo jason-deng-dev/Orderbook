@@ -267,7 +267,7 @@ auto Fifo3::pop(T& value) {
   - betweeen false sharing and not false sharing
   - relaxed atomics vs not relaxed atomics
 
-## Implementation 4:
+## Implementation 4: Cache push/popCursors
 
 On the push thread
 

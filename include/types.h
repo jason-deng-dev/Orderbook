@@ -84,6 +84,6 @@ static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, Or
 }
 
 struct alignas(8) QueueItem  {
-  uint32_t offset; // 4 bytes
-  uint16_t length; // 2 bytes
+  uint32_t offset{}; // 4 bytes
+  uint16_t length{}; // 2 bytes
 };

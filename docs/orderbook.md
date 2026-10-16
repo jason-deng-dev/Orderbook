@@ -127,7 +127,18 @@ OrderEvent{.ts = ts,
 
 # Orderbook Reverse Vector implementation
 
-## Data structure
+## What is the issue with std::map implemenation
+std::map is a node-based red-black tree, which causes 3 major hardware bottlenecks on the hot path
+- pointer chasing: 
+  - leads to L1/L2 cache misses because nodes are scattered across the heap
+- TLB (Translation Lookaside Buffer) misses
+  - because scattered allocations span multiple virtual memory pages, forcing expensive page-table walks
+- branch mispredictions
+  - due to the unpredictible if/else tree traversal
+
+A std::vector provides a contiguous memory layout, which maximizes spatial locality, keeping the working set in L1 cache and allowing the CPU's hardware prefetcher to antipicipate the next memory access, virtually eliminating those bottlenecks for the top of the book.
+
+## Why reverse Vector?
 ```c
 std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
 std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end

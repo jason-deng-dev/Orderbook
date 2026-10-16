@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
-#include <new>
 #include <stdexcept>
 
 inline constexpr size_t kCacheLineSize = 64;
@@ -15,9 +14,11 @@ class SpscFifo : private Alloc {
   size_t capacity_;
   T *ring_;
 
+  alignas(kCacheLineSize) std::atomic<std::size_t> pushCursorCached_{};
   alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
+  alignas(kCacheLineSize) std::atomic<std::size_t> popCursorCached_{};
   alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
-  // padding to avoid false sharing with adjacent objects
+
   char padding_[kCacheLineSize - sizeof(size_t)];
   static_assert(std::atomic<size_t>::is_always_lock_free);
 
@@ -26,6 +27,7 @@ public:
       : Alloc(alloc), capacity_(cap), ring_(Traits::allocate(*this, capacity_)) {
     if (!isPowerOfTwo(cap)) throw std::invalid_argument("capacity must be a power of 2!");
   }
+
   ~SpscFifo() {
     auto pushCursor = pushCursor_.load(std::memory_order::relaxed);
     auto popCursor = popCursor_.load(std::memory_order::relaxed);
@@ -36,19 +38,15 @@ public:
     Traits::deallocate(*this, ring_, capacity_);
   };
 
-  auto capacity() const { return capacity_; }
+  auto capacity() const noexcept { return capacity_; }
 
-  auto size() const {
+  auto size() const noexcept {
     auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
     auto popCursor = popCursor_.load(std::memory_order_relaxed);
-
     return pushCursor - popCursor;
   }
-  auto full() const { return size() == capacity_; }
-  auto empty() const { return size() == 0; }
-  
-  auto empty(std::size_t pushCursor, std::size_t popCursor) const { return pushCursor - popCursor == 0; }
-  auto full(std::size_t pushCursor, std::size_t popCursor) const { return (pushCursor - popCursor) == capacity(); }
+  auto full() const noexcept { return size() == capacity_; }
+  auto empty() const noexcept { return size() == 0; }
 
   auto push(T const &value) {
     auto pushCursor = pushCursor_.load(std::memory_order::relaxed);
@@ -69,5 +67,12 @@ public:
     ring_[popCursor & (capacity_ - 1)].~T();
     popCursor_.store(popCursor + 1, std::memory_order_release);
     return true;
+  }
+
+private:
+  auto empty(std::size_t pushCursor, std::size_t popCursor) const noexcept { return pushCursor - popCursor == 0; }
+
+  auto full(std::size_t pushCursor, std::size_t popCursor) const noexcept {
+    return (pushCursor - popCursor) == capacity();
   }
 };

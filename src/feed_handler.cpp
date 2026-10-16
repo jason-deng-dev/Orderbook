@@ -42,8 +42,6 @@ bool Feed_Handler::Load(const std::string &filepath) {
   return true;
 };
 
-
-
 void Feed_Handler::Read(int n) {
   for (int i = 0; i < n; ++i) {
     std::print("{:02x}", static_cast<unsigned>(*cursor_));

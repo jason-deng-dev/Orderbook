@@ -20,7 +20,7 @@
 # SPSC Fifo
 - [x] base version working
   - [x] tests working
-  - [ ] benchmark test
+  - [x] benchmark 
 - [ ] optimizations
   - [x] memory ordering
   - [x] false sharing prevention via padding

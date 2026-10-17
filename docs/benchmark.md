@@ -186,6 +186,8 @@ Importantly I don't perform correctness check inside the benchmark for throughpu
 To find out how fast our FeedHandler can parse and filter raw Nasdaq ITCH data, I need to allow it to push to our SPSC Fifo, without being potentially slowed down by the maximum throughput that our SPSC Fifo allows.
 
 To achieve this, I need to ensure that the SPSC Fifo that our feed handler feeds into during the benchmark has capacity greater than or equal to the number messages that our feed handler will feed into it
+- when accounting for how Google Benchmark will dynamically decide how many iterations to run to get stable time measurement, even if I set my queue capacity to 10 million, GB will eventually hit 10 million iterations and the queue will still fill up
+- Thus I will use a DummyQueue that offers the same API, but the push() jsut returns true
 
 Another thing that we must account for is the distribution of msg types and the filtering process that our feed handler must handle
 
@@ -198,8 +200,7 @@ To find out the absolute maximum msgs/sec the orderbook can handle, we need to f
 
 Cannot rely on the other parts of our system (SPSC Fifo and Feed Handler), since they can throttle the performance of our Orderbook performance (if their throughput is lower than our orderbook throughput)
 
-Thus we need a pre filled SPSC Fifo, with more messages in the queue than our Orderbook will process in our benchmark
-
+I will allocate an array of 1 million pre-parsed messages in memory, and pass it directly to the Orderbook's process_message function inside the `for (auto _ : state) benchmark loop
 
 # System end-to-end benchmarking
 Consumer Thread: Orderbook will pop from SPSC Fifo and process the order

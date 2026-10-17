@@ -19,6 +19,8 @@ enum class MessageStatus : uint8_t {
 
 class Feed_Handler {
 public:
+  Feed_Handler(bool filterByStock = false) : filter_by_stock_(filterByStock){}
+
   ~Feed_Handler() {
     if (buffer_) {
       munmap(const_cast<uint8_t *>(buffer_), file_size_);
@@ -39,6 +41,7 @@ public:
   void advance_cursor(size_t bytes) noexcept { cursor_ += bytes; }
 
 private:
+  bool filter_by_stock_;
   uint16_t stock_locate_ = 0;
   bool found_stock_locate_ = false;
   const uint8_t *buffer_ = nullptr; // start of file

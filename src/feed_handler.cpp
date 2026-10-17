@@ -82,12 +82,12 @@ std::expected<QueueItem, MessageStatus> Feed_Handler::GetNextMessage() {
 
   advance_cursor(msgLen + 2);
 
-  if (!found_stock_locate_ && (msgType == 'A' || msgType == 'F')) {
+  if (filter_by_stock_ && !found_stock_locate_ && (msgType == 'A' || msgType == 'F')) {
     stock_locate_ = stockLocate;
     found_stock_locate_ = true;
   }
 
-  if (found_stock_locate_ && stockLocate != stock_locate_) {
+  if (filter_by_stock_ && found_stock_locate_ && stockLocate != stock_locate_) {
     return std::unexpected(MessageStatus::Skipped);
   }
 
@@ -132,7 +132,7 @@ std::expected<QueueItem, MessageStatus> Feed_Handler::GetNextMessage() {
         {.orderId = newORN, .removeId = removeORN, .price = price, .volume = volume, .orderType = OrderType::Replace}};
   }
   default: {
-    return std::unexpected(MessageStatus::End);
+    return std::unexpected(MessageStatus::Skipped);
   }
   }
 }

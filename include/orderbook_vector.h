@@ -12,6 +12,7 @@
 template <typename SearchPolicy>
 class Orderbook_Vector {
 public:
+  Orderbook_Vector() {eventLog.reserve(1'000'000);}
   [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);

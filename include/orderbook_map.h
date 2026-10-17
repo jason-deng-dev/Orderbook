@@ -9,6 +9,8 @@
 
 class Orderbook_Map {
 public:
+  Orderbook_Map() { eventLog.reserve(1'000'000); }
+
   [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId = -1);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);

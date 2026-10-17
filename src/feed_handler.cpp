@@ -65,66 +65,61 @@ T read_value(const uint8_t *ptr) {
 }
 
 std::optional<QueueItem> Feed_Handler::GetNextMessage() {
-  // skip messages that do not modify book state; only EOF returns nullopt
-  while (true) {
-    if (buffer_end() - cursor_ < 2) {
-      return std::nullopt;
-    }
+  if (buffer_end() - cursor_ < 2) {
+    return std::nullopt;
+  }
 
-    uint16_t msgLen = read_value<uint16_t>(cursor_);
-    if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
-      return std::nullopt;
-    }
+  uint16_t msgLen = read_value<uint16_t>(cursor_);
+  auto startMsgInfo = cursor_ + 2;
+  char msgType = read_value<char>(startMsgInfo);
 
-    auto startMsgInfo = cursor_ + 2;
-    char msgType = read_value<char>(startMsgInfo);
-    advance_cursor(msgLen + 2);
+  if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
+    return std::nullopt;
+  }
+  advance_cursor(msgLen + 2);
 
-    switch (msgType) {
-    case 'A':
-    case 'F': {
-      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
-      Side side = read_value<char>(startMsgInfo + 19) == 'B' ? Side::Bid : Side::Ask;
-      Volume volume = read_value<Volume>(startMsgInfo + 20);
-      Price price = read_value<uint32_t>(startMsgInfo + 32);
-      return {{
-          .orderId = ORN,
-          .price = price,
-          .volume = volume,
-          .orderType = OrderType::Add,
-          .side = side,
-      }};
-    }
+  switch (msgType) {
+  case 'A':
+  case 'F': {
+    OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+    Side side = read_value<char>(startMsgInfo + 19) == 'B' ? Side::Bid : Side::Ask;
+    Volume volume = read_value<Volume>(startMsgInfo + 20);
+    Price price = read_value<uint32_t>(startMsgInfo + 32);
+    return {{
+        .orderId = ORN,
+        .price = price,
+        .volume = volume,
+        .orderType = OrderType::Add,
+        .side = side,
+    }};
+  }
 
-    case 'X': {
-      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
-      Volume volume = read_value<Volume>(startMsgInfo + 19);
-      return {{.orderId = ORN, .volume = volume, .orderType = OrderType::Cancel}};
-    }
+  case 'X': {
+    OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+    Volume volume = read_value<Volume>(startMsgInfo + 19);
+    return {{.orderId = ORN, .volume = volume, .orderType = OrderType::Cancel}};
+  }
 
-    case 'D': {
-      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
-      return {{
-          .orderId = ORN,
-          .orderType = OrderType::Delete,
-      }};
-    }
+  case 'D': {
+    OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+    return {{
+        .orderId = ORN,
+        .orderType = OrderType::Delete,
+    }};
+  }
 
-    case 'U': {
-      OrderId newORN = read_value<OrderId>(startMsgInfo + 19);
-      OrderId removeORN = read_value<OrderId>(startMsgInfo + 11);
-      Volume volume = read_value<Volume>(startMsgInfo + 27);
-      Price price = read_value<uint32_t>(startMsgInfo + 31);
-      return {{.orderId = newORN,
-               .removeId = removeORN,
-               .price = price,
-               .volume = volume,
-               .orderType = OrderType::Replace}};
-    }
+  case 'U': {
+    OrderId newORN = read_value<OrderId>(startMsgInfo + 19);
+    OrderId removeORN = read_value<OrderId>(startMsgInfo + 11);
+    Volume volume = read_value<Volume>(startMsgInfo + 27);
+    Price price = read_value<uint32_t>(startMsgInfo + 31);
 
-    default:
-      break;
-    }
+    return {
+        {.orderId = newORN, .removeId = removeORN, .price = price, .volume = volume, .orderType = OrderType::Replace}};
+  }
+  default: {
+    return std::nullopt;
+  }
   }
 }
 

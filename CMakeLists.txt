@@ -81,6 +81,10 @@ target_compile_definitions(orderbook_test PRIVATE
   FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
 
+target_compile_definitions(benchmarks PRIVATE
+  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
+
 target_compile_options(benchmarks PRIVATE
   $<$<CONFIG:Release>:-O3 -march=native -mtune=native >
 )

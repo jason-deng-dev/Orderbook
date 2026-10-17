@@ -9,7 +9,7 @@ QueueItem payload;
 SpscFifo<QueueItem> fifo{};
 QueueItem out;
 
-static void BM_Throughput(benchmark::State &state) {
+static void BM_Fifo_Throughput(benchmark::State &state) {
   for (auto _ : state) {
     if (state.thread_index() == 0) {
       while (!fifo.push(payload))
@@ -25,4 +25,4 @@ static void BM_Throughput(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_Throughput)->Threads(2)->Iterations(50000000);
+BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(50000000)->UseRealTime();

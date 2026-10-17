@@ -12,7 +12,8 @@ class Feed_Handler {
 public:
   bool Load(const std::string &filePath);
   void Read(int n);
-  // bool PushNextToQueue(SpscFifo<QueueItem,5>& queue);
+  template <typename T>
+  bool PushToQueue(SpscFifo<T>& fifo);
 
   ~Feed_Handler() {
     if (buffer_) {
@@ -29,5 +30,7 @@ private:
   const uint8_t *buffer_ = nullptr; // start of file
   const uint8_t *cursor_ = nullptr;
   size_t file_size_ = 0;
-  std::unordered_set<char> modifyStateMsg{'A', 'F', 'E', 'C', 'D', 'U'};
+  std::unordered_set<char> modifyStateMsg{'A', 'F', 'D', 'U'};
+
+  QueueItem GetNextMessage();
 };

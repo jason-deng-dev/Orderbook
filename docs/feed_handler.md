@@ -25,32 +25,50 @@ Lazy Loading
 
 ## Workflow
 - loads NASDAQ_ITCH50 file into buffer
-- then pushes tiny "header" into SPSC queue
-- Orderbook thread pops the 8-byte QueueItem and parses
+- then pushes order messages into SPSC queue
+- Orderbook thread pops the parsed QueueItem and executes based on order type
 
 ## header data structure to SPSC queue
-```c
-struct alignas(8) QueueItem{
-  uint32_t offset; // 4 bytes: cursor_ - buffer_
-  uint16_t length; // 2 bytes: length of ITCH message
-}
+```c++
+enum class OrderType : uint8_t { Add, Cancel, Delete, Replace };
+
+struct alignas(32) QueueItem {
+  // 8-byte types (24 total)
+  OrderId orderId;
+  OrderId removeId; // used for ReplaceOrder
+  Price price;
+
+  // 4-byte types (4 total)
+  Volume volume;
+
+  // 1-byte types (2 total)
+  OrderType orderType;
+  Side side;
+};
 ```
+AddOrder
+- Buy/Sell Indicator
+- Shares
+- Stock
+- Price
+- Order Reference Number
 
+CancelOrder (partial cancelation)
+- Order Reference Number
+- Cancelled Shares
 
+DeleteOrder (full cancelation)
+- Order Reference Number
 
+ReplaceOrder
+- Original ORN
+- New ORN
+- new Shares
+- new Price
 
-
-
-
-
-
-
-
-
-
-
-
-
+Note that we do not pass over Order Executed order messages
+- since Order Executed are outputs of my Orderbook's matching logic, not inputs
+- thus our FeedHandler only passes through Add/Cancel/Delete/Replace
 
 
 # Nasdaq Totalview ITCH 5.0 Notes 

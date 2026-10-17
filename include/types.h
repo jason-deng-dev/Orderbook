@@ -83,7 +83,18 @@ static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, Or
       .ts = ts, .orderId = id, .volume = newVolume, .type = EventType::Modify, .orderbookError = orderbookError};
 }
 
-struct alignas(8) QueueItem  {
-  uint32_t offset{}; // 4 bytes
-  uint16_t length{}; // 2 bytes
+enum class OrderType : uint8_t { Add, Cancel, Delete, Replace };
+
+struct alignas(32) QueueItem {
+  // 8-byte types (24 total)
+  OrderId removeId;
+  OrderId orderId;
+  Price price;
+
+  // 4-byte types (4 total)
+  Volume volume;
+
+  // 1-byte types (2 total)
+  OrderType orderType;
+  Side side;
 };

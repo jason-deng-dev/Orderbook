@@ -1,46 +1,22 @@
-# perf stat usage
+# Benchmark setup
+
+## Build and run
+
 ```bash
-perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock'  \
-  ./build/benchmarks \
-  --benchmark_filter=BM \
-  --benchmark_repetitions=10 \
-  --benchmark_report_aggregates_only=true
+cmake --preset default -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=25 --benchmark_report_aggregates_only=true
 ```
 
-```c
-execlp("perf", "perf", "stat", "-", parentPid.c_str(), (char*)nullptr);
-```
-- replaces the current process (child) with a completely new program (perf)
-- the child process stops being a copy of benchmark and becomes perf
-
-|Argument| What it is  | Why|
-|--|--|--|
-"perf" (1st) | program to run | tells OS find perf in PATH and execute it
-"perf" (2nd) | argv[0] | by convention, first argument to any C program is its own name
-"stat" | argv[1] | tells perf to run in stat mode (count events)
-"-p" | argv[2] | attach to PID
-parentPid.c_str() | argv[3] | actual PID of benchmark
-(char*)nullptr| terminator | tells execlp  (variadic function) this is the end of list
-
-# benchmark setup
-
-## Use perf stat as needed
-perf stat
-- if high cache miss rate
-  - probably false sharing/data-layout issue
-- if high context-switch count
-  - threads are blocking frequently (waiting on mmutex or I/O or thread count far exceeds number of CPU cores)
-<!-- - if high cpu-migration count -->
-  - likely means OS is moving threads from one core to another (invalidates L1/L2 caches) pin threads using `taskset`
-
-## for multithreaded benchmarks, account for GoogleBenchmark summing across threads
-`state.SetItemsProcessed(state.iterations()/2);`
-
+Every recorded run uses 25 repetitions and reports aggregates: mean, median, standard deviation, and coefficient of variation. When CV is high I compare medians instead of means.
 
 ## CPU pinning
-```bash
-$ lscpu -e
 
+```bash
+lscpu -e
+```
+
+```text
 CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
   0    0      0    0 0:0:0:0          yes
   1    0      0    0 0:0:0:0          yes
@@ -48,37 +24,38 @@ CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
   3    0      0    1 1:1:1:0          yes
   4    0      0    2 2:2:2:0          yes
   5    0      0    2 2:2:2:0          yes
-  6    0      0    3 3:3:3:0          yes
-  7    0      0    3 3:3:3:0          yes
-  8    0      0    4 4:4:4:0          yes
-  9    0      0    4 4:4:4:0          yes
- 10    0      0    5 5:5:5:0          yes
- 11    0      0    5 5:5:5:0          yes
- 12    0      0    6 6:6:6:0          yes
- 13    0      0    6 6:6:6:0          yes
- 14    0      0    7 7:7:7:0          yes
- 15    0      0    7 7:7:7:0          yes
+  ...
 ```
+
+Logical CPUs 0/1 are SMT siblings on physical core 0, 2/3 on core 1, 4/5 on core 2, and so on. `taskset -c 2,4` puts the two benchmark threads on distinct physical cores. This matters for the SPSC benchmark: producer and consumer then exercise inter-core communication instead of competing for the same core's execution units.
+
+## perf stat
+
 ```bash
-# pin to cores 0 and 2
-taskset -c 2,4 ./benchmark
+taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' \
+  ./build/benchmarks \
+  --benchmark_filter=BM_Fifo_Throughput \
+  --benchmark_repetitions=10 \
+  --benchmark_report_aggregates_only=true
 ```
-- Logical CPUs 0 and 1 are SMT siblingso n the same physical core (core 0)
-- To avoid SMT contention in the two-threaded SPSC benchmark, I will pin the consumer and consumer to logical CPUs 0 and 2
-  - which resides on distinct physical cores (core 0 and core 1)
-  - this ensures the measurement reflects inter-core communication rather than sibling hyperthreaded contention
 
-## benchmark in release build
+perf stat counts the whole process, not just the benchmark loop. Both fixture passes run during static initialization, before `main`:
 
-## Compiler Optimizations / Link-Time Optimization (LTO)
+- `LoadBenchmarkData` in `bm_orderbook.cpp` loads the NASDAQ capture and collects the orderbook messages.
+- `CountFeedCalls` in `bm_feedHandler.cpp` loads the capture again and counts `GetNextMessage` calls until `End`.
 
-The orderbook benchmark compares two implementations that do not compile the same way by default:
-- `Orderbook_Vector` is header-only templates, so all of its code is compiled inside the benchmark translation unit and gets inlined into the benchmark loop.
-- `Orderbook_Map` keeps `AddOrder`, `DeleteOrder`, and `ModifyOrder` in `src/orderbook_map.cpp`, compiled into the `orderbook_core` static library.
+That static work costs roughly 35G instructions per invocation. An orderbook benchmark run totals about 36G instructions, so almost all of its counter totals describe fixture parsing rather than orderbook work. The feed handler and FIFO benchmarks contain the same static work, but their timed loops are large enough that it is a smaller fraction (about 20% and 44%). I do not derive per-message cache or branch numbers from these counters. Doing that accurately would need an empty-filter baseline run to subtract, or counters scoped to the benchmark loop.
 
-If only the `benchmarks` target gets `-march=native`, the vector gets the native instruction set and cross-function inlining while the map does not. The difference would show up as a data-structure result even though it is really a build result. To remove that confound:
-- compile `orderbook_core` with the same `-march=native -mtune=native`
-- enable LTO so a call from `ProcessMessage` (header) into `orderbook_map.cpp` can inline across translation units, the same way the vector's header code already does
+The 8.66 GB fixture also means a cold first run reads from disk. The logged runs show low system time, which is consistent with a warm page cache; keep that in mind when comparing against a fresh boot.
+
+## Codegen parity
+
+The orderbook benchmark compares an implementation that lives in a `.cpp` file with one that is header-only:
+
+- `Orderbook_Map` keeps `AddOrder`, `DeleteOrder`, and `ModifyOrder` in `src/orderbook_map.cpp`, compiled into `orderbook_core`.
+- `Orderbook_Vector` is a header-only template, so its code compiles directly into the benchmark translation unit and inlines into the benchmark loop.
+
+If only the benchmark target used `-march=native`, the vector would get native instructions and cross-function inlining while the map would not. Any difference would then mix data-structure cost with build settings. To remove that confound:
 
 ```cmake
 include(CheckIPOSupported)
@@ -87,105 +64,103 @@ if(ipo_supported)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 endif()
 
-# Match benchmark codegen so map and vector are not compared across different ISA flags.
 target_compile_options(orderbook_core PRIVATE
   $<$<CONFIG:Release>:-march=native -mtune=native>
 )
 ```
 
-- `check_ipo_supported` avoids hardcoding `-flto`: the correct compile and link flags depend on the toolchain (GCC/Clang use `-flto`, MSVC uses `/GL` and `/LTCG`), and CMake applies the matching flags to both compilation and linking.
-- `CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE` initializes LTO for every Release target created after it, so `orderbook_core` and `benchmarks` are optimized and linked consistently.
-- `-O3` already comes from `CMAKE_CXX_FLAGS_RELEASE` (`-O3 -DNDEBUG`); the benchmark target only needs to add ISA flags.
-- `-march=native` lets the compiler use this CPU's instruction set. `-mtune=native` tunes instruction scheduling for this CPU without changing which instructions are allowed.
-- `-march=native` makes the binary machine-specific. Benchmark numbers are only valid on the machine that built the binary, and the CPU model should be recorded in the experiment log.
-- LTO plus matched flags means map vs vector differences now come from data layout and algorithm, not from one implementation being inlined and the other called across a library boundary.
+LTO is enabled for every Release target, so calls from the benchmark into `orderbook_core` can inline across translation units. `orderbook_core` and `benchmarks` both use `-march=native -mtune=native`. The benchmark target adds `-O3` as well, matching the Release flags.
 
+`-march=native` makes the binary machine-specific. Benchmark numbers are only valid on the machine that built them, so the CPU model belongs in every experiment log.
 
-## avoid compiler optimization by using GBench
-- benchmark::DoNoteOptimize(result)
-  - Tell the compiler the value of expr "might" be used externally; do not optimize it away
-- benchmark::ClobberMemory()
-  - Tell the compiler that all memory state may be modified externally
+## Preventing dead-code elimination
 
-```c
-for (auto _ : state) {
-    int result = expensive_computation();
-    benchmark::DoNotOptimize(result);
-    benchmark::ClobberMemory();
-}
-```
+Every benchmark feeds its result into `benchmark::DoNotOptimize(...)`. This tells the compiler the value might be observed externally, so it cannot delete the work that produced it. `ClobberMemory` is not used; none of these benchmarks mutate memory in a way the compiler could elide.
 
-## avoid warm up
-- by using GBench's KeepRunning()
-- or if allocated large block of memory outside loop, run few manual passes before loop
+# Benchmarks
 
-```c
-static void bm_with_warmup(benchmark::State& state)
-{
-    std::vector<int> data(10000);
+## SPSC FIFO
 
-    // Warm-up: pull the data into the cache
-    for (int i = 0; i < 100; ++i) {
-        volatile int dummy = data[0];
-        (void)dummy;
-    }
-
-    for (auto _ : state) {
-        int sum = 0;
-        for (int v : data) {
-            sum += v;
-        }
-        benchmark::DoNotOptimize(sum);
-    }
-}
-```
-
-# SPSC Fifo benchmark
-I will be performing the throughput test on my SPSC Fifo via GoogleBenchmark, using the settings/methodology specified in `benchmark setup`
-```c
+```cpp
 QueueItem payload;
 SpscFifo<QueueItem> fifo{};
 QueueItem out;
 
-static void BM_Throughput(benchmark::State &state) {
+static void BM_Fifo_Throughput(benchmark::State &state) {
   for (auto _ : state) {
     if (state.thread_index() == 0) {
       while (!fifo.push(payload))
         ;
-    }
-    else if (state.thread_index() == 1) {
-      
+    } else if (state.thread_index() == 1) {
       while (!fifo.pop(out))
         ;
       benchmark::DoNotOptimize(out);
     }
   }
+  state.SetItemsProcessed(state.iterations() / 2);
+}
+
+BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
+```
+
+Thread 0 is the producer and thread 1 is the consumer. Each spins until its push or pop succeeds, so the loop measures the queue's steady-state handoff rather than a single operation. `UseRealTime` makes the two threads share one wall-clock measurement.
+
+`SetItemsProcessed(state.iterations() / 2)` accounts for Google Benchmark summing the work reported by each thread. Each thread reports `iterations / 2` items; across the two threads that is one item per iteration, matching the push/pop pair. The benchmark does no correctness checking. Correctness is covered by the FIFO tests, so this measures throughput assuming a correct queue.
+
+## Feed handler
+
+```cpp
+static const int64_t kFeedCalls = static_cast<int64_t>(CountFeedCalls());
+
+static void BM_FeedHandler_Throughput(benchmark::State &state) {
+  Feed_Handler fh;
+  fh.Load(FIXTURES_DIR "/07302019.NASDAQ_ITCH50");
+
+  for (auto _ : state) {
+    auto queueItem = fh.GetNextMessage();
+    benchmark::DoNotOptimize(queueItem);
+  }
+
   state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_Throughput)->Threads(2)->Iterations(50000000);
+BENCHMARK(BM_FeedHandler_Throughput)->Iterations(kFeedCalls);
 ```
-I run the BM_Throughput using 2 threads, where inside the benchmark loop, depending on the states thread index the thread is assigned the role of producer (thread index == 0) or consumer (thread index == 1)
 
-Importantly I don't perform correctness check inside the benchmark for throughput, since the correctness is validated through our testing, and thus our benchmark should capture the pure performance of our SPSC Fifo assuming correctness.
+`CountFeedCalls` runs during static initialization, loads the capture, and calls `GetNextMessage` until `End`. The result, 282,229,685, becomes the fixed iteration count, so the benchmark never reads past the end of the buffer.
 
-# Feed Handler benchmark
-To measure the raw parsing and filtering throughput of the Feed Handler, we benchmark the GetNextMessage() method against an mmap'd NASDAQ ITCH 5.0 data buffer. This method returns a `std::expected<QueueItem, MessageStatus>`:
-- a `QueueItem` for state-modifying events (Add, Cancel, Delete, Replace)
-- `MessageStatus::Skipped` for administrative messages or messages belonging to a different stock locate
-- `MessageStatus::End` when the buffer ends or a record is malformed
+Each repetition constructs a `Feed_Handler` and calls `Load` inside the benchmark function. Google Benchmark times the whole function body, so the `mmap` and `madvise` cost is included in the reported per-iteration time. It is amortized over 282M iterations, but it is not zero.
 
-The parser latches onto the stock locate of the first Add/Add-with-MPID message and only emits book messages for that locate, so the benchmark measures one stock from a multi-stock capture. By running this over a live capture file, the benchmark accurately captures the CPU cost of parsing, branching, and filtering, weighted by the real-world distribution of message types.
+The handler uses the default `filter_by_stock = false`, so this benchmark parses every message in the capture. `GetNextMessage` returns a `QueueItem` for add, cancel, delete, and replace messages, `MessageStatus::Skipped` for administrative messages and unsupported types, and `MessageStatus::End` at the end of the buffer. The result is parse and dispatch throughput weighted by the real NASDAQ message mix.
 
+## Orderbook
 
-# Orderbook benchmark
-To measure the absolute maximum throughput of the Orderbook, we isolate it from the upstream components (Feed Handler, SPSC Fifo) to eliminate I/O and IPC bottlenecks.
+```cpp
+static std::vector<QueueItem> benchmark_messages;
+static Feed_Handler fh(true);
 
-We pre-allocate an array of 1 million parsed QueueItem messages in memory and invoke the Orderbook's `process_message()` function directly within the benchmark loop.
+static const size_t kMessageCount = LoadBenchmarkData(1'000'000);
 
-This array is cycled continously to sustain the load, accurately capturing the raw matching engine performacne under a realistic distribution of order types.
+template <typename Book>
+static void RunOnePass(benchmark::State &state, Book &book) {
+  size_t index = 0;
+  for (auto _ : state) {
+    auto res = book.ProcessMessage(benchmark_messages[index]);
+    benchmark::DoNotOptimize(res);
+    ++index;
+  }
+  state.SetItemsProcessed(state.iterations());
+}
+```
 
-# System end-to-end benchmarking
-Consumer Thread: Orderbook will pop from SPSC Fifo and process the order
-Producer Thread: Feed_Handler will push messages into the SPSC Fifo
+`LoadBenchmarkData` runs during static initialization. It uses a stock-filtered feed handler, which latches onto the stock locate of the first add message and emits only messages for that stock. The requested cap is 1,000,000 messages, but the capture ends first: 121,556 orderbook messages are collected. That is `kMessageCount`, and it becomes the fixed iteration count.
 
+Each benchmark function constructs its own book and replays the stored messages once, in capture order. With 25 repetitions, each repetition starts a fresh book and runs a full pass from index 0. The array is not wrapped around or cycled within a repetition. This isolates `ProcessMessage` from parsing, FIFO handoff, and I/O, and keeps the message distribution realistic.
+
+The four variants share `RunOnePass` and differ only in the book type: `Orderbook_Map`, and `Orderbook_Vector` with linear, binary, or branchless binary search. The map allocates through `std::map`; the vector variants keep price levels in a sorted vector.
+
+Fixture loading happens before `main`, so it is outside the Google Benchmark timing. It is inside the process-wide perf counters, which is why those counters are not used for orderbook per-message claims.
+
+## End-to-end
+
+Not implemented yet. The intended setup is one producer thread running `Feed_Handler` and pushing into the SPSC FIFO, and one consumer thread popping and calling `ProcessMessage`, with the same pinning and repetition policy as the isolated benchmarks. That run will show the cost the isolated benchmarks leave out: queue handoff and cross-thread cache traffic.

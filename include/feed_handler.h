@@ -3,11 +3,19 @@
 #include "spsc_fifo.h"
 #include "types.h"
 #include <cstdint>
+#include <expected>
 #include <optional>
 #include <string>
 #include <sys/mman.h>
 #include <unordered_set>
 
+
+
+enum class MessageStatus : uint8_t {
+  OK,
+  End,
+  Skipped
+};
 
 class Feed_Handler {
 public:
@@ -21,8 +29,8 @@ public:
   void Read(int n);
   template <typename T>
   bool PushToQueue(SpscFifo<T> &fifo);
-  std::optional<QueueItem> GetNextMessage();
-  QueueItem GetNextModifyingMessage();
+  std::expected<QueueItem, MessageStatus> GetNextMessage();
+  std::optional<QueueItem> GetNextModifyingMessage();
 
   // Accessors
   const size_t size() const noexcept { return file_size_; }

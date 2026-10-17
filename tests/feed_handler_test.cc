@@ -10,8 +10,9 @@ TEST(Feed_Handler, Initalization) {
 };
 
 // fixtures/parse_fixture.itch: S, R, A, F, X, D, U in that order.
-// GetNextMessage returns one message per call: nullopt for non-book messages,
-// a QueueItem for state-modifying messages, and nullopt at end of buffer.
+// GetNextMessage returns one message per call: no QueueItem for non-book
+// messages or for other stock locates, a QueueItem for state-modifying
+// messages of the first stock, and MessageStatus::End at end of buffer.
 TEST(Feed_Handler, ParsesMessageSequence) {
   Feed_Handler fh;
   ASSERT_TRUE(fh.Load(FIXTURES_DIR "/parse_fixture.itch"));
@@ -56,5 +57,7 @@ TEST(Feed_Handler, ParsesMessageSequence) {
   EXPECT_EQ(replace->volume, 400u);
   EXPECT_EQ(replace->price, 1'000'000);
 
-  EXPECT_FALSE(fh.GetNextMessage().has_value());
+  auto end = fh.GetNextMessage();
+  ASSERT_FALSE(end.has_value());
+  EXPECT_EQ(end.error(), MessageStatus::End);
 }

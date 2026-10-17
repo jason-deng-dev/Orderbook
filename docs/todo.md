@@ -15,7 +15,7 @@
 # Feed Handler
 - [x] setup
 - [x] load
-- [ ] push to SPSC Fifo
+- [x] push to SPSC Fifo
 
 # SPSC Fifo
 - [x] base version working

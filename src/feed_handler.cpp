@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <cstring>
+#include <expected>
 #include <fcntl.h>
 #include <iostream>
 #include <optional>
@@ -64,24 +65,22 @@ T read_value(const uint8_t *ptr) {
   return value;
 }
 
-std::optional<QueueItem> Feed_Handler::GetNextMessage() {
-  if (buffer_end() - cursor_ < 2) {
-    return std::nullopt;
+std::expected<QueueItem, MessageStatus> Feed_Handler::GetNextMessage() {
+  const size_t remaining = static_cast<size_t>(buffer_end() - cursor_);
+  if (remaining < 2) {
+    return std::unexpected(MessageStatus::End);
   }
 
   uint16_t msgLen = read_value<uint16_t>(cursor_);
+  if (msgLen < 1 || remaining < 2 + msgLen) {
+    return std::unexpected(MessageStatus::End);
+  }
 
-  
-  
   auto startMsgInfo = cursor_ + 2;
   char msgType = read_value<char>(startMsgInfo);
-  uint16_t stockLocate = read_value<uint16_t>(startMsgInfo+1);
+  uint16_t stockLocate = read_value<uint16_t>(startMsgInfo + 1);
 
   advance_cursor(msgLen + 2);
-
-  if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
-    return std::nullopt;
-  }
 
   if (!found_stock_locate_ && (msgType == 'A' || msgType == 'F')) {
     stock_locate_ = stockLocate;
@@ -89,9 +88,8 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
   }
 
   if (found_stock_locate_ && stockLocate != stock_locate_) {
-    return std::nullopt;
+    return std::unexpected(MessageStatus::Skipped);
   }
-
 
   switch (msgType) {
   case 'A':
@@ -100,7 +98,7 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
     Side side = read_value<char>(startMsgInfo + 19) == 'B' ? Side::Bid : Side::Ask;
     Volume volume = read_value<Volume>(startMsgInfo + 20);
     Price price = read_value<uint32_t>(startMsgInfo + 32);
-    
+
     return {{
         .orderId = ORN,
         .price = price,
@@ -134,7 +132,7 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
         {.orderId = newORN, .removeId = removeORN, .price = price, .volume = volume, .orderType = OrderType::Replace}};
   }
   default: {
-    return std::nullopt;
+    return std::unexpected(MessageStatus::End);
   }
   }
 }

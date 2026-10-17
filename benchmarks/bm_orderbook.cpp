@@ -15,8 +15,11 @@ static void SetupBenchmarkData(int n) {
   fh.Load(FIXTURES_DIR "/07302019.NASDAQ_ITCH50");
   while (benchmark_messages.size() < n) {
     auto msg = fh.GetNextMessage();
-    if (msg.has_value()) {
+    if (msg) {
       benchmark_messages.push_back(std::move(msg.value()));
+    }
+    else if (msg.error() == MessageStatus::End) {
+      return;
     }
   }
 }
@@ -82,7 +85,7 @@ static void BM_Orderbook_Vector_BranchlessBinarySearch_Throughput(benchmark::Sta
 }
 
 
-inline constexpr int N = 1000;
+inline constexpr int N = 1000000000;
 BENCHMARK(BM_Orderbook_Map_Throughput)->Arg(N);
 BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Arg(N);
 BENCHMARK(BM_Orderbook_Vector_BinarySearch_Throughput)->Arg(N);

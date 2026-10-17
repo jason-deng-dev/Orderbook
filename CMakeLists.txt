@@ -4,6 +4,13 @@ project(Orderbook)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Link-time optimization for all Release targets.
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported LANGUAGES CXX)
+if(ipo_supported)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -20,6 +27,11 @@ add_library(orderbook_core
 
 # tells CMake compile every source file in orderbook_core with include/ added to compiler's search path
 target_include_directories(orderbook_core PUBLIC include)
+
+# Match benchmark codegen so map and vector are not compared across different ISA flags.
+target_compile_options(orderbook_core PRIVATE
+  $<$<CONFIG:Release>:-march=native -mtune=native>
+)
 
 add_executable(orderbook
   src/main.cpp
@@ -87,6 +99,6 @@ target_compile_definitions(benchmarks PRIVATE
 )
 
 target_compile_options(benchmarks PRIVATE
-  $<$<CONFIG:Release>:-O3 -march=native -mtune=native >
+  $<$<CONFIG:Release>:-O3 -march=native -mtune=native>
 )
 

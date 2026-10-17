@@ -100,18 +100,34 @@ taskset -c 2,4 ./benchmark
 ## benchmark in release build
 
 ## Compiler Optimizations / Link-Time Optimization (LTO)
-```c
-target_compile_options(benchmarks PRIVATE
-  $<$<CONFIG:Release>:-O3 -march=native -mtune=native -flto>
-)
 
-target_link_options(benchmarks PRIVATE
-  $<$<CONFIG:Release>: -flto>
+The orderbook benchmark compares two implementations that do not compile the same way by default:
+- `Orderbook_Vector` is header-only templates, so all of its code is compiled inside the benchmark translation unit and gets inlined into the benchmark loop.
+- `Orderbook_Map` keeps `AddOrder`, `DeleteOrder`, and `ModifyOrder` in `src/orderbook_map.cpp`, compiled into the `orderbook_core` static library.
+
+If only the `benchmarks` target gets `-march=native`, the vector gets the native instruction set and cross-function inlining while the map does not. The difference would show up as a data-structure result even though it is really a build result. To remove that confound:
+- compile `orderbook_core` with the same `-march=native -mtune=native`
+- enable LTO so a call from `ProcessMessage` (header) into `orderbook_map.cpp` can inline across translation units, the same way the vector's header code already does
+
+```cmake
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported LANGUAGES CXX)
+if(ipo_supported)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+
+# Match benchmark codegen so map and vector are not compared across different ISA flags.
+target_compile_options(orderbook_core PRIVATE
+  $<$<CONFIG:Release>:-march=native -mtune=native>
 )
 ```
-- `-O3` anables the most aggressive optimization level
-- `-march=native` generates the code for the specific CPU we are compiling on, utilizing all avilable instruction set
-- `mtune=native` tunes the code generated for your specific CPU model without changing instruction set
+
+- `check_ipo_supported` avoids hardcoding `-flto`: the correct compile and link flags depend on the toolchain (GCC/Clang use `-flto`, MSVC uses `/GL` and `/LTCG`), and CMake applies the matching flags to both compilation and linking.
+- `CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE` initializes LTO for every Release target created after it, so `orderbook_core` and `benchmarks` are optimized and linked consistently.
+- `-O3` already comes from `CMAKE_CXX_FLAGS_RELEASE` (`-O3 -DNDEBUG`); the benchmark target only needs to add ISA flags.
+- `-march=native` lets the compiler use this CPU's instruction set. `-mtune=native` tunes instruction scheduling for this CPU without changing which instructions are allowed.
+- `-march=native` makes the binary machine-specific. Benchmark numbers are only valid on the machine that built the binary, and the CPU model should be recorded in the experiment log.
+- LTO plus matched flags means map vs vector differences now come from data layout and algorithm, not from one implementation being inlined and the other called across a library boundary.
 
 
 ## avoid compiler optimization by using GBench

@@ -9,9 +9,9 @@ Load()
 - loads the contents of the NASDAQ_ITCH50 file into buffer
 
 GetMessage()
-- skips over non-relevent messages, and returns QueueItem to SPSC
+- gets next message
 
-## Buffer data structure
+# Buffer data structure
 Why not `std::unique_ptr<uint8_t[]>` or `std::vector`
 - because it forces you to copy the entire NASDAQ_ITCH50 file from disk into RAM
 
@@ -23,12 +23,12 @@ Lazy Loading
 - Since ITCH files can be massive, by using mmap, memory footprint stays tiny and startup time is effecively instant
 
 
-## Workflow
+# Workflow
 - loads NASDAQ_ITCH50 file into buffer
 - then pushes order messages into SPSC queue
 - Orderbook thread pops the parsed QueueItem and executes based on order type
 
-## header data structure to SPSC queue
+# header data structure to SPSC queue
 ```c++
 enum class OrderType : uint8_t { Add, Cancel, Delete, Replace };
 
@@ -69,6 +69,15 @@ ReplaceOrder
 Note that we do not pass over Order Executed order messages
 - since Order Executed are outputs of my Orderbook's matching logic, not inputs
 - thus our FeedHandler only passes through Add/Cancel/Delete/Replace
+
+# Tracking Stock Locate
+If we want to filter stock data to specify a specific stock that we want to process we can track Stock locate which is always at offset 1, and stable per session.
+
+Wheen we first parse an 'A' or 'F' message type, we set private variable stock locate.
+
+going forward we only forward messages with that stock locate value
+
+
 
 
 # Nasdaq Totalview ITCH 5.0 Notes 

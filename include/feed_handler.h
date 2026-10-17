@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <sys/mman.h>
+#include <unordered_set>
 
 
 class Feed_Handler {
@@ -21,6 +22,7 @@ public:
   template <typename T>
   bool PushToQueue(SpscFifo<T> &fifo);
   std::optional<QueueItem> GetNextMessage();
+  QueueItem GetNextModifyingMessage();
 
   // Accessors
   const size_t size() const noexcept { return file_size_; }
@@ -29,6 +31,8 @@ public:
   void advance_cursor(size_t bytes) noexcept { cursor_ += bytes; }
 
 private:
+  uint16_t stock_locate_;
+  bool found_stock_locate_ = false;
   const uint8_t *buffer_ = nullptr; // start of file
   const uint8_t *cursor_ = nullptr;
   size_t file_size_ = 0;

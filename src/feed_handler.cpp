@@ -70,8 +70,20 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
   }
 
   uint16_t msgLen = read_value<uint16_t>(cursor_);
+  
   auto startMsgInfo = cursor_ + 2;
   char msgType = read_value<char>(startMsgInfo);
+  uint16_t stockLocate = read_value<uint16_t>(startMsgInfo+1);
+
+  if (!found_stock_locate_ && (msgType == 'A' || msgType == 'F')) {
+    stock_locate_ = stockLocate;
+    found_stock_locate_ = true;
+  }
+
+  if (found_stock_locate_ && stockLocate != stock_locate_) {
+    return std::nullopt;
+  }
+
 
   if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
     return std::nullopt;
@@ -85,6 +97,7 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
     Side side = read_value<char>(startMsgInfo + 19) == 'B' ? Side::Bid : Side::Ask;
     Volume volume = read_value<Volume>(startMsgInfo + 20);
     Price price = read_value<uint32_t>(startMsgInfo + 32);
+    
     return {{
         .orderId = ORN,
         .price = price,

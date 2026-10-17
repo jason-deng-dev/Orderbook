@@ -10,10 +10,16 @@ TEST(Feed_Handler, Initalization) {
 };
 
 // fixtures/parse_fixture.itch: S, R, A, F, X, D, U in that order.
-// S and R are filtered out; the remaining five must yield one QueueItem each.
+// GetNextMessage returns one message per call: nullopt for non-book messages,
+// a QueueItem for state-modifying messages, and nullopt at end of buffer.
 TEST(Feed_Handler, ParsesMessageSequence) {
   Feed_Handler fh;
   ASSERT_TRUE(fh.Load(FIXTURES_DIR "/parse_fixture.itch"));
+
+  // 'S' System Event: filtered, cursor still advances.
+  EXPECT_FALSE(fh.GetNextMessage().has_value());
+  // 'R' Stock Directory: filtered, cursor still advances.
+  EXPECT_FALSE(fh.GetNextMessage().has_value());
 
   auto add = fh.GetNextMessage();
   ASSERT_TRUE(add.has_value());

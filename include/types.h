@@ -85,10 +85,26 @@ static OrderEvent MakeModifyEvent(Timestamp ts, OrderId id, Volume newVolume, Or
 
 enum class OrderType : uint8_t { Add, Cancel, Delete, Replace };
 
+inline const char *toString(OrderType t) {
+  switch (t) {
+    {
+    case OrderType::Add:
+      return "Add";
+    case OrderType::Cancel:
+      return "Cancel";
+    case OrderType::Delete:
+      return "Delete";
+    case OrderType::Replace:
+      return "Replace";
+    }
+  }
+  return "Unknown";
+}
+
 struct alignas(32) QueueItem {
   // 8-byte types (24 total)
-  OrderId removeId;
   OrderId orderId;
+  OrderId removeId;
   Price price;
 
   // 4-byte types (4 total)

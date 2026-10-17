@@ -2,11 +2,15 @@
 #include "types.h"
 #include <cstdint>
 
+#include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <optional>
 #include <print>
+#include <stdexcept>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <type_traits>
 #include <unistd.h>
 
 bool Feed_Handler::Load(const std::string &filepath) {
@@ -49,13 +53,83 @@ void Feed_Handler::Read(int n) {
   }
 }
 
-// // push to Spsc queue, then skip to next state modifying message (no delay when sending next message)
-// bool Feed_Handler::PushNextToQueue(SpscFifo<QueueItem>& queue) {
-//   uint16_t msgLen = (static_cast<uint16_t>(cursor_[0]) << 8) | static_cast<uint16_t>(cursor_[1]);
-//   cursor_ += 2;
-//   auto msgType = static_cast<char>(cursor_[0]);
-//   ++cursor_;
-//   std::cout << "msgLen:" << msgLen << " msgType" << msgType << '\n';
+template <typename T>
+T read_value(const uint8_t *ptr) {
+  static_assert(std::is_integral_v<T>, "wire types are integral");
+  T value;
+  std::memcpy(&value, ptr, sizeof(T));
+  if constexpr (std::endian::native == std::endian::little) {
+    value = std::byteswap(value); // reverse big-endian wire order to host
+  }
+  return value;
+}
 
-//   return true;
-// }
+std::optional<QueueItem> Feed_Handler::GetNextMessage() {
+  // skip messages that do not modify book state; only EOF returns nullopt
+  while (true) {
+    if (buffer_end() - cursor_ < 2) {
+      return std::nullopt;
+    }
+
+    uint16_t msgLen = read_value<uint16_t>(cursor_);
+    if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
+      return std::nullopt;
+    }
+
+    auto startMsgInfo = cursor_ + 2;
+    char msgType = read_value<char>(startMsgInfo);
+    advance_cursor(msgLen + 2);
+
+    switch (msgType) {
+    case 'A':
+    case 'F': {
+      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+      Side side = read_value<char>(startMsgInfo + 19) == 'B' ? Side::Bid : Side::Ask;
+      Volume volume = read_value<Volume>(startMsgInfo + 20);
+      Price price = read_value<uint32_t>(startMsgInfo + 32);
+      return {{
+          .orderId = ORN,
+          .price = price,
+          .volume = volume,
+          .orderType = OrderType::Add,
+          .side = side,
+      }};
+    }
+
+    case 'X': {
+      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+      Volume volume = read_value<Volume>(startMsgInfo + 19);
+      return {{.orderId = ORN, .volume = volume, .orderType = OrderType::Cancel}};
+    }
+
+    case 'D': {
+      OrderId ORN = read_value<OrderId>(startMsgInfo + 11);
+      return {{
+          .orderId = ORN,
+          .orderType = OrderType::Delete,
+      }};
+    }
+
+    case 'U': {
+      OrderId newORN = read_value<OrderId>(startMsgInfo + 19);
+      OrderId removeORN = read_value<OrderId>(startMsgInfo + 11);
+      Volume volume = read_value<Volume>(startMsgInfo + 27);
+      Price price = read_value<uint32_t>(startMsgInfo + 31);
+      return {{.orderId = newORN,
+               .removeId = removeORN,
+               .price = price,
+               .volume = volume,
+               .orderType = OrderType::Replace}};
+    }
+
+    default:
+      break;
+    }
+  }
+}
+
+// push to Spsc queue, then skip to next state modifying message (no delay when sending next message)
+template <typename T>
+bool Feed_Handler::PushToQueue(SpscFifo<T> &fifo) {
+  return true;
+}

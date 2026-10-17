@@ -38,17 +38,17 @@ public:
     Traits::deallocate(*this, ring_, capacity_);
   };
 
-  auto capacity() const noexcept { return capacity_; }
+  size_t capacity() const noexcept { return capacity_; }
 
-  auto size() const noexcept {
+  size_t size() const noexcept {
     auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
     auto popCursor = popCursor_.load(std::memory_order_relaxed);
     return pushCursor - popCursor;
   }
-  auto full() const noexcept { return size() == capacity_; }
-  auto empty() const noexcept { return size() == 0; }
+  bool full() const noexcept { return size() == capacity_; }
+  bool empty() const noexcept { return size() == 0; }
 
-  auto push(T const &value) {
+  bool push(T const &value) {
     auto pushCursor = pushCursor_.load(std::memory_order::relaxed);
     auto popCursor = popCursor_.load(std::memory_order::acquire);
     if (full(pushCursor, popCursor)) {
@@ -59,7 +59,7 @@ public:
     return true;
   }
 
-  auto pop(T &value) {
+  bool pop(T &value) {
     auto pushCursor = pushCursor_.load(std::memory_order::acquire);
     auto popCursor = popCursor_.load(std::memory_order::relaxed);
     if (empty(pushCursor, popCursor)) return false;
@@ -70,9 +70,9 @@ public:
   }
 
 private:
-  auto empty(std::size_t pushCursor, std::size_t popCursor) const noexcept { return pushCursor - popCursor == 0; }
+  bool empty(std::size_t pushCursor, std::size_t popCursor) const noexcept { return pushCursor - popCursor == 0; }
 
-  auto full(std::size_t pushCursor, std::size_t popCursor) const noexcept {
+  bool full(std::size_t pushCursor, std::size_t popCursor) const noexcept {
     return (pushCursor - popCursor) == capacity();
   }
 };

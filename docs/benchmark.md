@@ -183,24 +183,15 @@ I run the BM_Throughput using 2 threads, where inside the benchmark loop, depend
 Importantly I don't perform correctness check inside the benchmark for throughput, since the correctness is validated through our testing, and thus our benchmark should capture the pure performance of our SPSC Fifo assuming correctness.
 
 # Feed Handler benchmark
-To find out how fast our FeedHandler can parse and filter raw Nasdaq ITCH data, I need to allow it to push to our SPSC Fifo, without being potentially slowed down by the maximum throughput that our SPSC Fifo allows.
-
-To achieve this, I need to ensure that the SPSC Fifo that our feed handler feeds into during the benchmark has capacity greater than or equal to the number messages that our feed handler will feed into it
-- when accounting for how Google Benchmark will dynamically decide how many iterations to run to get stable time measurement, even if I set my queue capacity to 10 million, GB will eventually hit 10 million iterations and the queue will still fill up
-- Thus I will use a DummyQueue that offers the same API, but the push() jsut returns true
-
-Another thing that we must account for is the distribution of msg types and the filtering process that our feed handler must handle
-
-Since during our system end-to-end our feed handler should only pass message types parsed from the Nasdaq ITCH data that modify our orderbook state, it filters on messages that aren't state modifying
-- when we perform our benchmark we must ensure that our sample captures the true distribution of messages that are modifying and messages that must be filtered
+To measure the raw parsing and filtering throughput of the Feed Handler, we benchmark the GetNextMessage() method against an mmap'd NASDAQ ITCH 5.0 data buffer. This method returns a std::optional<QueueItem> for state-modifying events and std::nullopt for administrative messages. By running this over a live capture file, the benchmark accurately captures the CPU cost of parsing, branching, and filtering, weighted by the real-world distribution of message types.
 
 
 # Orderbook benchmark
-To find out the absolute maximum msgs/sec the orderbook can handle, we need to feed it messages as fast as physically possible. 
+To measure the absolute maximum throughput of the Orderbook, we isolate it from the upstream components (Feed Handler, SPSC Fifo) to eliminate I/O and IPC bottlenecks.
 
-Cannot rely on the other parts of our system (SPSC Fifo and Feed Handler), since they can throttle the performance of our Orderbook performance (if their throughput is lower than our orderbook throughput)
+We pre-allocate an array of 1 million parsed QueueItem messages in memory and invoke the Orderbook's `process_message()` function directly within the benchmark loop.
 
-I will allocate an array of 1 million pre-parsed messages in memory, and pass it directly to the Orderbook's process_message function inside the `for (auto _ : state) benchmark loop
+This array is cycled continously to sustain the load, accurately capturing the raw matching engine performacne under a realistic distribution of order types.
 
 # System end-to-end benchmarking
 Consumer Thread: Orderbook will pop from SPSC Fifo and process the order

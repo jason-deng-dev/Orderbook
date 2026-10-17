@@ -31,7 +31,7 @@ public:
   void advance_cursor(size_t bytes) noexcept { cursor_ += bytes; }
 
 private:
-  uint16_t stock_locate_;
+  uint16_t stock_locate_ = 0;
   bool found_stock_locate_ = false;
   const uint8_t *buffer_ = nullptr; // start of file
   const uint8_t *cursor_ = nullptr;

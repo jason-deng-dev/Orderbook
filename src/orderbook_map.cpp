@@ -25,8 +25,8 @@
 };
 
 template <typename T>
-[[nodiscard]] MatchResult Orderbook_Map::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId,
-                                                  Price price, Volume volume, TraderId traderId) {
+[[nodiscard]] MatchResult Orderbook_Map::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price,
+                                                  Volume volume, TraderId traderId) {
   const MatchResult matchResult = HandleFill(side, price, volume, traderId);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
     eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
@@ -63,8 +63,7 @@ template <typename T>
 };
 
 template <typename T>
-[[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt,
-                                                        T &levels) {
+[[nodiscard]] OrderbookError Orderbook_Map::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels) {
   auto levelIt = levels.find(orderIt->price);
   assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
 
@@ -112,8 +111,8 @@ template <typename T>
 }
 
 template <typename T>
-[[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt,
-                                                        T &levels, Volume newVolume) {
+[[nodiscard]] OrderbookError Orderbook_Map::ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
+                                                        Volume newVolume) {
   auto levelIt = levels.find(orderIt->price);
   assert(levelIt != levels.end() && "CRITICAL BUG: Price level not found");
   PriceLevel &priceLevel = levelIt->second;
@@ -159,7 +158,7 @@ template <typename T>
       while (remainingVolume > 0 && restingOrderIt != priceLevel.orders.end()) {
         Order &restingOrder = *restingOrderIt;
         // self-trade prevention
-        if (restingOrder.trader_id == incomingTraderId) {
+        if (restingOrder.trader_id != kUnknownTrader && restingOrder.trader_id == incomingTraderId) {
           ++restingOrderIt;
           continue;
         }

@@ -70,10 +70,18 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
   }
 
   uint16_t msgLen = read_value<uint16_t>(cursor_);
+
+  
   
   auto startMsgInfo = cursor_ + 2;
   char msgType = read_value<char>(startMsgInfo);
   uint16_t stockLocate = read_value<uint16_t>(startMsgInfo+1);
+
+  advance_cursor(msgLen + 2);
+
+  if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
+    return std::nullopt;
+  }
 
   if (!found_stock_locate_ && (msgType == 'A' || msgType == 'F')) {
     stock_locate_ = stockLocate;
@@ -84,11 +92,6 @@ std::optional<QueueItem> Feed_Handler::GetNextMessage() {
     return std::nullopt;
   }
 
-
-  if (msgLen < 1 || buffer_end() - cursor_ < 2 + msgLen) {
-    return std::nullopt;
-  }
-  advance_cursor(msgLen + 2);
 
   switch (msgType) {
   case 'A':

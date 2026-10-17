@@ -1,6 +1,7 @@
 #pragma once
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <list>
 
 enum class Side : uint8_t { Bid, Ask };
@@ -8,6 +9,7 @@ using OrderId = uint64_t;
 using Volume = uint32_t;
 using Price = int64_t;
 using TraderId = uint32_t;
+inline constexpr TraderId kUnknownTrader = std::numeric_limits<TraderId>::max();
 using Timestamp = uint64_t;
 
 struct Order {
@@ -23,7 +25,7 @@ struct PriceLevel {
   std::list<Order> orders;
 };
 
-enum class OrderbookError : uint8_t { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice };
+enum class OrderbookError : uint8_t { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice, InvalidOrder};
 
 enum class OrderStatus : uint8_t { Rejected, Resting, PartiallyFilled, Filled };
 

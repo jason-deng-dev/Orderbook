@@ -66,6 +66,7 @@ add_executable(benchmarks
   benchmarks/main.cpp
   benchmarks/bm_fifo.cpp
   benchmarks/bm_feedHandler.cpp
+  benchmarks/bm_orderbook.cpp
 )
 target_link_libraries(benchmarks PRIVATE
   benchmark::benchmark

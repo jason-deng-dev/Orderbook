@@ -15,6 +15,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_library(orderbook_core
   src/orderbook_map.cpp
+  src/feed_handler.cpp
 )
 
 # tells CMake compile every source file in orderbook_core with include/ added to compiler's search path
@@ -22,7 +23,6 @@ target_include_directories(orderbook_core PUBLIC include)
 
 add_executable(orderbook
   src/main.cpp
-  src/feed_handler.cpp
 )
 
 # provides extra directories to search for libraries
@@ -36,6 +36,7 @@ add_executable(orderbook_test
   tests/search_policies_test.cc
   tests/orderbook_vector_test.cc
   tests/spsc_fifo_test.cc
+  tests/feed_handler_test.cc
 )
 
 target_link_libraries(orderbook_test PRIVATE
@@ -73,7 +74,11 @@ target_link_libraries(benchmarks PRIVATE
 )
 
 target_compile_definitions(orderbook PRIVATE
-  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/fixtures"
+  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
+
+target_compile_definitions(orderbook_test PRIVATE
+  FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
 
 target_compile_options(benchmarks PRIVATE

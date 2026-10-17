@@ -22,7 +22,7 @@ static void BM_Fifo_Throughput(benchmark::State &state) {
       benchmark::DoNotOptimize(out);
     }
   }
-  state.SetItemsProcessed(state.iterations());
+  state.SetItemsProcessed(state.iterations()/2);
 }
 
-BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(50000000)->UseRealTime();
+BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();

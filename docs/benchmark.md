@@ -66,6 +66,10 @@ perf stat
 <!-- - if high cpu-migration count -->
   - likely means OS is moving threads from one core to another (invalidates L1/L2 caches) pin threads using `taskset`
 
+## for multithreaded benchmarks, account for GoogleBenchmark summing across threads
+`state.SetItemsProcessed(state.iterations()/2);`
+
+
 ## CPU pinning
 ```bash
 $ lscpu -e
@@ -199,7 +203,12 @@ I run the BM_Throughput using 2 threads, where inside the benchmark loop, depend
 Importantly I don't perform correctness check inside the benchmark for throughput, since the correctness is validated through our testing, and thus our benchmark should capture the pure performance of our SPSC Fifo assuming correctness.
 
 # Feed Handler benchmark
-To measure the raw parsing and filtering throughput of the Feed Handler, we benchmark the GetNextMessage() method against an mmap'd NASDAQ ITCH 5.0 data buffer. This method returns a std::optional<QueueItem> for state-modifying events and std::nullopt for administrative messages. By running this over a live capture file, the benchmark accurately captures the CPU cost of parsing, branching, and filtering, weighted by the real-world distribution of message types.
+To measure the raw parsing and filtering throughput of the Feed Handler, we benchmark the GetNextMessage() method against an mmap'd NASDAQ ITCH 5.0 data buffer. This method returns a `std::expected<QueueItem, MessageStatus>`:
+- a `QueueItem` for state-modifying events (Add, Cancel, Delete, Replace)
+- `MessageStatus::Skipped` for administrative messages or messages belonging to a different stock locate
+- `MessageStatus::End` when the buffer ends or a record is malformed
+
+The parser latches onto the stock locate of the first Add/Add-with-MPID message and only emits book messages for that locate, so the benchmark measures one stock from a multi-stock capture. By running this over a live capture file, the benchmark accurately captures the CPU cost of parsing, branching, and filtering, weighted by the real-world distribution of message types.
 
 
 # Orderbook benchmark

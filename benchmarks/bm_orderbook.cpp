@@ -1,92 +1,63 @@
 #include "feed_handler.h"
 #include "orderbook_map.h"
+#include "orderbook_vector.h"
 #include "types.h"
 #include <benchmark/benchmark.h>
-#include <unistd.h>
 #include <utility>
-#include "orderbook_vector.h"
 
 static std::vector<QueueItem> benchmark_messages;
-static Feed_Handler fh;
+static Feed_Handler fh(true);
 
-static void SetupBenchmarkData(int n) {
-  if (!benchmark_messages.empty()) return;
-  benchmark_messages.reserve(n);
-  fh.Load(FIXTURES_DIR "/07302019.NASDAQ_ITCH50");
-  while (benchmark_messages.size() < n) {
+static size_t LoadBenchmarkData(size_t maxMessages) {
+  benchmark_messages.reserve(maxMessages);
+  if (!fh.Load(FIXTURES_DIR "/07302019.NASDAQ_ITCH50")) {
+    return 0;
+  }
+  while (benchmark_messages.size() < maxMessages) {
     auto msg = fh.GetNextMessage();
     if (msg) {
       benchmark_messages.push_back(std::move(msg.value()));
-    }
-    else if (msg.error() == MessageStatus::End) {
-      return;
+    } else if (msg.error() == MessageStatus::End) {
+      break;
     }
   }
+  return benchmark_messages.size();
+}
+
+static const size_t kMessageCount = LoadBenchmarkData(1'000'000);
+
+template <typename Book>
+static void RunOnePass(benchmark::State &state, Book &book) {
+  size_t index = 0;
+  for (auto _ : state) {
+    auto res = book.ProcessMessage(benchmark_messages[index]);
+    benchmark::DoNotOptimize(res);
+    ++index;
+  }
+  state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_Orderbook_Map_Throughput(benchmark::State &state) {
-  SetupBenchmarkData(state.range(0));
   Orderbook_Map ob;
-  int index = 0;
-  for (auto _ : state) {
-    auto res = ob.ProcessMessage(benchmark_messages[index]);
-
-    benchmark::DoNotOptimize(res);
-    // state.PauseTiming();
-    index = (index + 1) % benchmark_messages.size();
-    // state.ResumeTiming();
-  }
-  state.SetItemsProcessed(state.iterations());
+  RunOnePass(state, ob);
 }
 
-
 static void BM_Orderbook_Vector_LinearSearch_Throughput(benchmark::State &state) {
-  SetupBenchmarkData(state.range(0));
   Orderbook_Vector<LinearSearch> ob;
-  int index = 0;
-  for (auto _ : state) {
-    auto res = ob.ProcessMessage(benchmark_messages[index]);
-    benchmark::DoNotOptimize(res);
-    // state.PauseTiming();
-    index = (index + 1) % benchmark_messages.size();
-    // state.ResumeTiming();
-  }
-  state.SetItemsProcessed(state.iterations());
+  RunOnePass(state, ob);
 }
 
 static void BM_Orderbook_Vector_BinarySearch_Throughput(benchmark::State &state) {
-  SetupBenchmarkData(state.range(0));
   Orderbook_Vector<BinarySearch> ob;
-  int index = 0;
-  for (auto _ : state) {
-    auto res = ob.ProcessMessage(benchmark_messages[index]);
-
-    benchmark::DoNotOptimize(res);
-    // state.PauseTiming();
-    index = (index + 1) % benchmark_messages.size();
-    // state.ResumeTiming();
-  }
-  state.SetItemsProcessed(state.iterations());
+  RunOnePass(state, ob);
 }
 
 static void BM_Orderbook_Vector_BranchlessBinarySearch_Throughput(benchmark::State &state) {
-  SetupBenchmarkData(state.range(0));
   Orderbook_Vector<BranchlessBinarySearch> ob;
-  int index = 0;
-  for (auto _ : state) {
-    auto res = ob.ProcessMessage(benchmark_messages[index]);
-
-    benchmark::DoNotOptimize(res);
-    // state.PauseTiming();
-    index = (index + 1) % benchmark_messages.size();
-    // state.ResumeTiming();
-  }
-  state.SetItemsProcessed(state.iterations());
+  RunOnePass(state, ob);
 }
 
-
-inline constexpr int N = 1000000000;
-BENCHMARK(BM_Orderbook_Map_Throughput)->Arg(N);
-BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Arg(N);
-BENCHMARK(BM_Orderbook_Vector_BinarySearch_Throughput)->Arg(N);
-BENCHMARK(BM_Orderbook_Vector_BranchlessBinarySearch_Throughput)->Arg(N);
+BENCHMARK(BM_Orderbook_Map_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
+BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
+BENCHMARK(BM_Orderbook_Vector_BinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
+BENCHMARK(BM_Orderbook_Vector_BranchlessBinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));

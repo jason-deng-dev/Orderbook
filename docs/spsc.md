@@ -98,19 +98,118 @@ say cursor implemented to 10
 - caching push/popCursor via cachedPopCursor and cachedPushCursor
 
 # False sharing prevention
+
 Because of MESI cache coherence protocol, when Core 0 (Producer) writes to pushCursor, the cache line holding both cursors is marked "Modified" and invaliadted on Core 1 (Consumer).
 
 - Core 1 is forced to fetch it from L3 or main memory on next read
 
 By using alignas(kCacheLineSize) which we set to 64, on both our push and pop cursor
+
 ```c
 alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
 alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 ```
+
 - it provides us with the offset between 2 objects to avoid false sharing on most modern CPU with cache line of 64 bytes.
 
 # Why cache push / pop cursor?
 
+```c
+bool push(T const &value) {
+    auto pushCursor = pushCursor_.load(std::memory_order::relaxed);
+    auto popCursor = popCursor_.load(std::memory_order::acquire);
+    if (full(pushCursor, popCursor)) return false;
+    new (&ring_[pushCursor & (capacity_ - 1)]) T(value);
+    pushCursor_.store(pushCursor + 1, std::memory_order_release);
+    return true;
+}
+
+bool pop(T &value) {
+  auto pushCursor = pushCursor_.load(std::memory_order::acquire);
+  auto popCursor = popCursor_.load(std::memory_order::relaxed);
+  if (empty(pushCursor, popCursor)) return false;
+  value = ring_[popCursor & (capacity_ - 1)];
+  ring_[popCursor & (capacity_ - 1)].~T();
+  popCursor_.store(popCursor + 1, std::memory_order_release);
+  return true;
+}
+```
+
+Currently on push and pop operations, we must always perform a load with `std::memory_order::acquire` and a store with `std::memory_order_release`.
+This is to ensure that we establish a happens-before relationship between consumer (pop) and producer (push) thread.
+
+In push(), loading our `popCursor_` with `acquire` pairs with the `release` store of `popCursor_` in pop().
+When the acquire load observes the released value, it syncrhonizes with that store, so everything sequenced-before the release store in pop(), happens-before everything sequenced after the acquire load in push().
+
+However, performing atomic loads with `acquire` semantics on every single push and pop operation causes unnecessary cache-line bounching and memory barrier overhead.
+
+Importantly,
+
+- push()/pop() are the sole modifier of pushCursor/popCursor through the store operation with release semantics
+- thus since the consumer thread (pop) is the only one writing to pop_cursor it does not need to use an atomic load to read its own position, likewise for producer thread(push) and pushCursor
+
+```c
+bool push(T const &value) {
+    auto popCursor = popCursor_.load(std::memory_order::acquire);
+    if (full(pushCursor_, popCursor)) return false;
+    new (&ring_[pushCursor_ & (capacity_ - 1)]) T(value);
+    pushCursor_.store(pushCursor_ + 1, std::memory_order_release);
+    return true;
+}
+
+bool pop(T &value) {
+  auto pushCursor = pushCursor_.load(std::memory_order::acquire);
+  if (empty(pushCursor, popCursor_)) return false;
+  value = ring_[popCursor_ & (capacity_ - 1)];
+  ring_[popCursor_ & (capacity_ - 1)].~T();
+  popCursor_.store(popCursor_ + 1, std::memory_order_release);
+  return true;
+}
+```
+
+Importantly, the cursors only monotonically increment
+
+- If the producer keeps a local (non-atomic) copy of the last observed popCursor* and the queue is not full according to this cached value, it is mathematically impossible for the queue to be full `pushCursor*-popCursor\_ == capacity` in reality.
+  - we know cachedPopCursor < popCursor\_
+  - thus as long as `pushCursor_-cachedPopCursor != capacity`, we know that `pushCursor_-popCursor_ != capacity` and that
+  - only when `pushCursor_- cachedPopCursor == capacity` do we need to load the popCursor\_ to update our cachedPopCursor
+- likewise, if consumer keeps a local (non-atomic) copy of last observed pushCursor* and the queue is not empty according to this cached value, it is mathematically impossible for the queue to be empty `pushCursor* - popCursor\_ == 0` in reality
+  - since cachedPushCursor < pushCursor\_
+  - as long as `cachedPushCursor - popCursor_ != 0` we know that `pushCursor_ - popCursor_ != 0`
+  - only when `cachedPushCursor - popCursor_ == 0` do we to load the pushCursor\_ to update our cachedPushCursor
+
+```c
+alignas(kCacheLineSize) std::size_t cachedPushCursor_{};
+alignas(kCacheLineSize) std::size_t cachedPopCursor_{};
+
+alignas(kCacheLineSize) std::size_t producerPushCursor_{};
+alignas(kCacheLineSize) std::size_t consumerPopCursor_{};
+
+alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
+alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
+
+bool push(T const &value) {
+    if (full(pushCursor_, cachedPopCursor_)){
+      cachedPopCursor_ = popCursor_.load(std::memory_order::acquire);
+      if (full(pushCursor_, cachedPopCursor_)) return false;
+    }
+    new (&ring_[pushCursor_ & (capacity_ - 1)]) T(value);
+    pushCursor_.store(pushCursor_ + 1, std::memory_order_release);
+    return true;
+  }
+
+  bool pop(T &value) {
+
+    if (empty(cachedPushCursor_, popCursor_)){
+      cachedPushCursor_ = pushCursor_.load(std::memory_order::acquire);
+      if(empty(cachedPushCursor_, popCursor_)) return false;
+    }
+    value = ring_[popCursor_ & (capacity_ - 1)];
+    ring_[popCursor_ & (capacity_ - 1)].~T();
+    popCursor_.store(popCursor_ + 1, std::memory_order_release);
+    return true;
+  }
+```
 
 # Benchmark
 
@@ -122,4 +221,3 @@ alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 | Ring occupancy distribution                                    | is the producer or consumer the bottleneck? |
 | Cycles/msg producer, cycles/msg consumer                       | where the time goes                         |
 | Book-state hashes, both modes                                  | correctness                                 |
-

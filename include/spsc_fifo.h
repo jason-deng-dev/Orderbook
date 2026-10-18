@@ -8,15 +8,18 @@
 inline constexpr size_t kCacheLineSize = 64;
 inline constexpr bool isPowerOfTwo(size_t n) { return n != 0 && (n & (n - 1)) == 0; }
 
+
+
 template <typename T, typename Alloc = std::allocator<T>>
 class SpscFifo : private Alloc {
   using Traits = std::allocator_traits<Alloc>;
   size_t capacity_;
   T *ring_;
 
-  alignas(kCacheLineSize) std::atomic<std::size_t> pushCursorCached_{};
+  // --- Load and stored by Producer; loaded by Consumer ---
   alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
-  alignas(kCacheLineSize) std::atomic<std::size_t> popCursorCached_{};
+
+  // --- Load and stored by Consumer; loaded by Producer ---
   alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 
   char padding_[kCacheLineSize - sizeof(size_t)];
@@ -45,8 +48,17 @@ public:
     auto popCursor = popCursor_.load(std::memory_order_relaxed);
     return pushCursor - popCursor;
   }
-  bool full() const noexcept { return size() == capacity_; }
-  bool empty() const noexcept { return size() == 0; }
+  auto full() const noexcept {
+    auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
+    auto popCursor = popCursor_.load(std::memory_order_relaxed);
+    return full(pushCursor, popCursor);
+  }
+
+  auto empty() const noexcept {
+    auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
+    auto popCursor = popCursor_.load(std::memory_order_relaxed);
+    return empty(pushCursor, popCursor);
+  }
 
   bool push(T const &value) {
     auto pushCursor = pushCursor_.load(std::memory_order::relaxed);

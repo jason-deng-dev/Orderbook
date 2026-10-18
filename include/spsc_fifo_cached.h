@@ -51,11 +51,7 @@ public:
   size_t size() const noexcept {
     auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
     auto popCursor = popCursor_.load(std::memory_order_relaxed);
-    if (popCursor <= pushCursor) {
-      return pushCursor - popCursor;
-    } else {
-      return capacity_ - (popCursor - (pushCursor + 1));
-    }
+    return pushCursor - popCursor;
   }
   auto full() const noexcept {
     auto pushCursor = pushCursor_.load(std::memory_order_relaxed);
@@ -76,41 +72,28 @@ public:
       if (full(pushCursor, cachedPopCursor_)) return false;
     }
     new (&ring_[pushCursor & (capacity_ - 1)]) T(value);
-    if (pushCursor == capacity_) {
-      pushCursor_.store(0, std::memory_order_release);
-    } else {
-      pushCursor_.store(pushCursor + 1, std::memory_order_release);
-    }
+    pushCursor_.store(pushCursor + 1, std::memory_order_release);
     return true;
   }
 
   bool pop(T &value) {
-    auto popCursor = popCursor_.load(std::memory_order::relaxed);
+    auto popCursor = popCursor_.load(std::memory_order_relaxed);
     if (empty(cachedPushCursor_, popCursor)) {
       cachedPushCursor_ = pushCursor_.load(std::memory_order::acquire);
       if (empty(cachedPushCursor_, popCursor)) return false;
     }
     value = ring_[popCursor & (capacity_ - 1)];
     ring_[popCursor & (capacity_ - 1)].~T();
-
-    if (popCursor == capacity_) {
-      popCursor_.store(0, std::memory_order_release);
-    } else {
-      popCursor_.store(popCursor + 1, std::memory_order_release);
-    }
+    popCursor_.store(popCursor + 1, std::memory_order_release);
     return true;
   }
 
 private:
-  bool empty(std::size_t pushCursor, std::size_t popCursor) const noexcept { return pushCursor == popCursor; }
+  // Cursors are monotonic. The mask maps them to ring slots. Unsigned
+  // subtraction keeps size/full/empty correct across 2^64 wrap.
+  bool empty(std::size_t pushCursor, std::size_t popCursor) const noexcept { return pushCursor - popCursor == 0; }
 
   bool full(std::size_t pushCursor, std::size_t popCursor) const noexcept {
-    if (pushCursor < popCursor) {
-      return pushCursor == popCursor - 1;
-    } else if (popCursor < pushCursor) {
-      return popCursor == pushCursor - capacity_;
-    } else {
-      return false;
-    }
+    return (pushCursor - popCursor) == capacity();
   }
 };

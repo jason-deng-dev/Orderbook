@@ -1,7 +1,4 @@
-# Orderbook — TODO
-
-## Done
-
+# Orderbook
 - [x] `Orderbook_Map`
   - [x] AddOrder
   - [x] DeleteOrder
@@ -27,4 +24,11 @@
 - [ ] optimizations
   - [x] memory ordering
   - [x] false sharing prevention via padding
-  - [ ] cache push/popCursor
+
+# Optimizations
+- [x] cached push/popCursor for SPSC Fifo
+- [ ] Intrusive slab orderbook
+- [ ] event log spsc for orderbook
+
+# Benchmark
+- [ ] pin each thread with `pthread_setaffinity_np`

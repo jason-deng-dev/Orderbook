@@ -143,30 +143,6 @@ When the acquire load observes the released value, it syncrhonizes with that sto
 
 However, performing atomic loads with `acquire` semantics on every single push and pop operation causes unnecessary cache-line bounching and memory barrier overhead.
 
-Importantly,
-
-- push()/pop() are the sole modifier of pushCursor/popCursor through the store operation with release semantics
-- thus since the consumer thread (pop) is the only one writing to pop_cursor it does not need to use an atomic load to read its own position, likewise for producer thread(push) and pushCursor
-
-```c
-bool push(T const &value) {
-    auto popCursor = popCursor_.load(std::memory_order::acquire);
-    if (full(pushCursor_, popCursor)) return false;
-    new (&ring_[pushCursor_ & (capacity_ - 1)]) T(value);
-    pushCursor_.store(pushCursor_ + 1, std::memory_order_release);
-    return true;
-}
-
-bool pop(T &value) {
-  auto pushCursor = pushCursor_.load(std::memory_order::acquire);
-  if (empty(pushCursor, popCursor_)) return false;
-  value = ring_[popCursor_ & (capacity_ - 1)];
-  ring_[popCursor_ & (capacity_ - 1)].~T();
-  popCursor_.store(popCursor_ + 1, std::memory_order_release);
-  return true;
-}
-```
-
 Importantly, the cursors only monotonically increment
 
 - If the producer keeps a local (non-atomic) copy of the last observed popCursor* and the queue is not full according to this cached value, it is mathematically impossible for the queue to be full `pushCursor*-popCursor\_ == capacity` in reality.
@@ -182,33 +158,31 @@ Importantly, the cursors only monotonically increment
 alignas(kCacheLineSize) std::size_t cachedPushCursor_{};
 alignas(kCacheLineSize) std::size_t cachedPopCursor_{};
 
-alignas(kCacheLineSize) std::size_t producerPushCursor_{};
-alignas(kCacheLineSize) std::size_t consumerPopCursor_{};
-
 alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
 alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 
 bool push(T const &value) {
-    if (full(pushCursor_, cachedPopCursor_)){
+    auto pushCursor = pushCursor_.load(std::memory_order::relaxed);
+    if (full(pushCursor, cachedPopCursor_)) {
       cachedPopCursor_ = popCursor_.load(std::memory_order::acquire);
-      if (full(pushCursor_, cachedPopCursor_)) return false;
+      if (full(pushCursor, cachedPopCursor_)) return false;
     }
-    new (&ring_[pushCursor_ & (capacity_ - 1)]) T(value);
-    pushCursor_.store(pushCursor_ + 1, std::memory_order_release);
+    new (&ring_[pushCursor & (capacity_ - 1)]) T(value);
+    pushCursor_.store(pushCursor + 1, std::memory_order_release);
     return true;
   }
 
-  bool pop(T &value) {
-
-    if (empty(cachedPushCursor_, popCursor_)){
-      cachedPushCursor_ = pushCursor_.load(std::memory_order::acquire);
-      if(empty(cachedPushCursor_, popCursor_)) return false;
-    }
-    value = ring_[popCursor_ & (capacity_ - 1)];
-    ring_[popCursor_ & (capacity_ - 1)].~T();
-    popCursor_.store(popCursor_ + 1, std::memory_order_release);
-    return true;
+bool pop(T &value) {
+  auto popCursor = popCursor_.load(std::memory_order_relaxed);
+  if (empty(cachedPushCursor_, popCursor)) {
+    cachedPushCursor_ = pushCursor_.load(std::memory_order::acquire);
+    if (empty(cachedPushCursor_, popCursor)) return false;
   }
+  value = ring_[popCursor & (capacity_ - 1)];
+  ring_[popCursor & (capacity_ - 1)].~T();
+  popCursor_.store(popCursor + 1, std::memory_order_release);
+  return true;
+}
 ```
 
 # Benchmark

@@ -37,6 +37,12 @@ taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,b
   --benchmark_filter=BM_Fifo_Throughput \
   --benchmark_repetitions=10 \
   --benchmark_report_aggregates_only=true
+
+taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' \
+  ./build/benchmarks \
+  --benchmark_filter=BM_Fifo_Cached_Throughput \
+  --benchmark_repetitions=10 \
+  --benchmark_report_aggregates_only=true
 ```
 
 perf stat counts the whole process, not just the benchmark loop. Both fixture passes run during static initialization, before `main`:

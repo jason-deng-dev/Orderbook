@@ -6,7 +6,7 @@ https://www.youtube.com/watch?v=RpD-0oqGEzE
 
 ## Problem #1: Speed trap
 
-![alt text](image.png)
+![alt text](../images/custom_allocator/image.png)
 
 - new probably going to call malloc
 - malloc() will try to use its own memory
@@ -22,7 +22,7 @@ https://www.youtube.com/watch?v=RpD-0oqGEzE
 
 ## Problem #2: Memory Chaos
 
-![alt text](image-1.png)
+![alt text](../images/custom_allocator/image-1.png)
 depending on how you allocate your memory, it can get fragmented
 
 beyond fragmentation, we can look at the cache issue
@@ -69,7 +69,7 @@ struct MyAllocator {
 }
 ```
 
-![alt text](image-2.png)
+![alt text](../images/custom_allocator/image-2.png)
 big separation between memory and the object (2 steps)
 
 - we have the allocation, which is making the memory available
@@ -130,7 +130,7 @@ std::allocator_traits<MyAlloc>::construct(my_alloc, p, val); // Modern way
 
 
 # Pool Allocator
-![alt text](image-3.png)
+![alt text](../images/custom_allocator/image-3.png)
 - lighter block = free and avaialble
 - orange block = taken
 
@@ -149,7 +149,7 @@ private:
 }
 ```
 when you do intrusive pool allocator you use a linked list to track your empty blocks
-![alt text](image-4.png)
+![alt text](../images/custom_allocator/image-4.png)
 - the dark green is the memory that we allocated already when we started our code
 ```c
 void initialize_pool() {
@@ -167,7 +167,7 @@ void initialize_pool() {
 ```
 - what we do here is line up our data structure to be able to fit in that pool
 
-![alt text](image-5.png)
+![alt text](../images/custom_allocator/image-5.png)
 - now our pool would look like this, we would have our separate spots, which each part of our linked list points to a free block
 - then we can fill it in
 
@@ -190,7 +190,7 @@ T* allocate() {
 }
 ```
 - our allocation is already do, all we're doing here is manually managing hte memory to put our objects where we want them inside this pool
-![alt text](image-6.png)
+![alt text](../images/custom_allocator/image-6.png)
 
 
 Code: Allocating and Assigning
@@ -209,7 +209,7 @@ for (int i = 0; i < 34; ++i) {
 ```
 - doing this over 34 times, we would fill up the blocks in order
 
-![alt text](image-7.png)
+![alt text](../images/custom_allocator/image-7.png)
 
 Code: Deallocation
 ```c
@@ -268,27 +268,27 @@ for (int i = 0; i < 4; ++i) {
 ```
 
 # Stack Allocator
-![alt text](image-9.png)
-![alt text](image-10.png)
-![alt text](image-11.png)
-![alt text](image-13.png)
+![alt text](../images/custom_allocator/image-9.png)
+![alt text](../images/custom_allocator/image-10.png)
+![alt text](../images/custom_allocator/image-11.png)
+![alt text](../images/custom_allocator/image-13.png)
 
 with stack allocation pattern, you are not stuck to one type of object,
  you can use multiple types, and it is still a very fast allocation because the actual memory was allocated all in the beginning of the call
  - all we are doing is creating these objects inside the memory that we already have
 
-![alt text](image-14.png)
+![alt text](../images/custom_allocator/image-14.png)
 
 We can only deallocate everything else before you can deallocate a block!
-![alt text](image-15.png)
+![alt text](../images/custom_allocator/image-15.png)
 
 Using checkpoint markers, which we can use multiple
 - it becomes very fast to deallocate back to a check point marker
 
-![alt text](image-16.png)
+![alt text](../images/custom_allocator/image-16.png)
 
 # Summary of Designs
-![alt text](image-17.png)
+![alt text](../images/custom_allocator/image-17.png)
 
 | Property | Pool | Stack |
 |---|---|---|

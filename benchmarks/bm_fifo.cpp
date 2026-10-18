@@ -6,11 +6,32 @@
 #include <cstdint>
 #include <pthread.h>
 #include <sched.h>
+#include <sched.h>
+#include <iostream>
+#include <cstdlib>
+
+
+// Helper function to pin the current thread to a specific CPU
+static void pinThread(int cpu) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) != 0) {
+        std::cerr << "Error: Failed to pin thread to CPU " << cpu << "\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+constexpr int kProducerCpu = 2;
+constexpr int kConsumerCpu = 4;
+
+
 
 SpscFifo<QueueItem> fifo{};
   QueueItem payload{};
 
 static void BM_Fifo_Throughput(benchmark::State &state) {
+  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
 
   for (auto _ : state) {
@@ -30,6 +51,7 @@ static void BM_Fifo_Throughput(benchmark::State &state) {
 SpscFifo_Cached<QueueItem> fifo_cached{};
 
 static void BM_Fifo_Cached_Throughput(benchmark::State &state) {
+  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
   for (auto _ : state) {
     if (state.thread_index() == 0) {
@@ -63,6 +85,7 @@ static const size_t cachedSlackSize = SetupSlackedQueue(fifo_cached_slack, slack
 static const size_t baseSlackSize = SetupSlackedQueue(fifo_slack, slackFifoCapacity / 2);
 
 static void BM_Fifo_Cached_Throughput_Slacked(benchmark::State &state) {
+  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
   for (auto _ : state) {
     if (state.thread_index() == 0) {
@@ -79,6 +102,7 @@ static void BM_Fifo_Cached_Throughput_Slacked(benchmark::State &state) {
 }
 
 static void BM_Fifo_Throughput_Slacked(benchmark::State &state) {
+  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
   for (auto _ : state) {
     if (state.thread_index() == 0) {

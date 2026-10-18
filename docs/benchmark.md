@@ -15,7 +15,6 @@ Every recorded run uses 25 repetitions and reports aggregates: mean, median, sta
 ```bash
 lscpu -e
 ```
-
 ```text
 CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
   0    0      0    0 0:0:0:0          yes
@@ -27,32 +26,11 @@ CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
   ...
 ```
 
-Logical CPUs 0/1 are SMT siblings on physical core 0, 2/3 on core 1, 4/5 on core 2, and so on. `taskset -c 2,4` puts the two benchmark threads on distinct physical cores. This matters for the SPSC benchmark: producer and consumer then exercise inter-core communication instead of competing for the same core's execution units.
+Logical CPUs 0/1 are SMT siblings on physical core 0, 2/3 on core 1, 4/5 on core 2, and so on. 
 
-## perf stat
+We can use `taskset -c 2,4`  to set an affinity mask on the process, which is inherited by all threads. Kernel scheduler picks which allowed CPU each thread runs on, and can migrate threads between 2 and 4.
 
-```bash
-taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' \
-  ./build/benchmarks \
-  --benchmark_filter=BM_Fifo_Throughput \
-  --benchmark_repetitions=10 \
-  --benchmark_report_aggregates_only=true
-
-taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' \
-  ./build/benchmarks \
-  --benchmark_filter=BM_Fifo_Cached_Throughput \
-  --benchmark_repetitions=10 \
-  --benchmark_report_aggregates_only=true
-```
-
-perf stat counts the whole process, not just the benchmark loop. Both fixture passes run during static initialization, before `main`:
-
-- `LoadBenchmarkData` in `bm_orderbook.cpp` loads the NASDAQ capture and collects the orderbook messages.
-- `CountFeedCalls` in `bm_feedHandler.cpp` loads the capture again and counts `GetNextMessage` calls until `End`.
-
-That static work costs roughly 35G instructions per invocation. An orderbook benchmark run totals about 36G instructions, so almost all of its counter totals describe fixture parsing rather than orderbook work. The feed handler and FIFO benchmarks contain the same static work, but their timed loops are large enough that it is a smaller fraction (about 20% and 44%). I do not derive per-message cache or branch numbers from these counters. Doing that accurately would need an empty-filter baseline run to subtract, or counters scoped to the benchmark loop.
-
-The 8.66 GB fixture also means a cold first run reads from disk. The logged runs show low system time, which is consistent with a warm page cache; keep that in mind when comparing against a fresh boot.
+Thus in addition to using using taskset -c 2,4 we must pin consumer/producer threads inside of SPSC Fifo benchmarks via `pthread_setaffinity_np()`
 
 ## Codegen parity
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "slab_allocator.h"
 #include <chrono>
 #include <cstdint>
 #include <limits>
@@ -25,13 +26,12 @@ struct PriceLevel {
 
   Volume totalVolume() const {
     Volume res = 0;
-    for (const auto& o : orders) {
+    for (const auto &o : orders) {
       res += o.volume;
     }
     return res;
   }
 };
-
 
 struct Order_Intrusive {
   OrderId id;
@@ -39,29 +39,42 @@ struct Order_Intrusive {
   Side side;
   TraderId trader_id;
   Volume volume;
-  Order_Intrusive *prev;
-  Order_Intrusive *next;
+  Order_Intrusive *prev = nullptr;
+  Order_Intrusive *next = nullptr;
 };
 
 struct PriceLevel_Intrusive {
-  Volume total_volume = 0;
   Order_Intrusive *head{nullptr};
   Order_Intrusive *tail{nullptr};
   size_t order_count = 0;
 
-  bool empty() { return head == nullptr && tail == nullptr && order_count == 0 && total_volume == 0; }
+  bool empty() { return head == nullptr && tail == nullptr && order_count == 0; }
 
   // toDelete must be an Order_Intrusive inside this priceLevel
-  Order_Intrusive* erase (Order_Intrusive* toDelete) {
-    if (toDelete == head && toDelete == tail) {
-
+  template <int SlabSize>
+  bool erase(Order_Intrusive *toDelete, SlabAllocator<Order_Intrusive, SlabSize> &allocator) {
+    if (toDelete == nullptr) return false;
+    --order_count;
+    if (toDelete->prev) {
+      toDelete->prev->next = toDelete->next;
+    } else {
+      head = toDelete->next;
     }
+    if (toDelete->next) {
+      toDelete->next->prev = toDelete->prev;
+    } else {
+      tail = toDelete->prev;
+    }
+
+    // manually call destructor;
+    toDelete->~Order_Intrusive();
+    allocator.deallocate(toDelete);
+    return true;
   }
 
   void addOrder(Order_Intrusive *newOrderLocation, OrderId orderId, Price price, Side side, TraderId traderId,
                 Volume volume) {
     ++order_count;
-    total_volume += volume;
     if (head == nullptr && tail == nullptr) {
       new (newOrderLocation) Order_Intrusive{orderId, price, side, traderId, volume, nullptr, nullptr};
       head = newOrderLocation;

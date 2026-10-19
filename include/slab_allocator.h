@@ -10,8 +10,8 @@ class SlabAllocator {
 
 public:
   static_assert(sizeof(T) >= sizeof(FreeNode));
-  static_assert(alignof(T) >=  alignof(FreeNode));
-  
+  static_assert(alignof(T) >= alignof(FreeNode));
+
   SlabAllocator() { init(); };
 
   T *allocate() {
@@ -24,10 +24,10 @@ public:
     return result;
   }
 
-  bool deallocate(T &p) {
+  bool deallocate(T *p) {
     if (p == nullptr) return false;
 
-    if (p < reinterpret_cast<T &>(pool_) || p >= reinterpret_cast<T *>(pool_ + sizeof(pool_))) {
+    if (p < reinterpret_cast<T *>(pool_) || p >= reinterpret_cast<T *>(pool_ + sizeof(pool_))) {
       return false; // pointer not from pool
     }
 

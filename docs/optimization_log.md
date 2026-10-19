@@ -528,6 +528,5 @@ Log 1's branch-misprediction explanation was based on the broken reset implement
 
 # Planned optimizations
 Orderbook optimization
-- replace std::optional return values to std::expected
 - intrusive slab orderbook
 - event log spsc

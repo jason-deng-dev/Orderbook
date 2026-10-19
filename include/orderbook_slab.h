@@ -1,9 +1,43 @@
 #pragma once
+#include "search_policies.h"
 #include "slab_allocator.h"
 #include "types.h"
 #include <cstddef>
 #include <unordered_map>
-#include "search_policies.h"
+
+struct Order_Intrusive {
+  OrderId id;
+  Price price;
+  Side side;
+  TraderId trader_id;
+  Volume volume;
+  Order_Intrusive *prev;
+  Order_Intrusive *next;
+};
+
+struct PriceLevel_Intrusive {
+  Volume total_volume = 0;
+  Order_Intrusive *head{nullptr};
+  Order_Intrusive *tail{nullptr};
+  size_t order_count = 0;
+
+  void addOrder(Order_Intrusive *newOrderLocation, OrderId orderId, Price price, Side side, TraderId traderId,
+                Volume volume) {
+    ++order_count;
+    total_volume += volume;
+    if (head == nullptr && tail == nullptr) {
+      new (newOrderLocation) Order_Intrusive{orderId, price, side, traderId, volume, nullptr, nullptr};
+      head = newOrderLocation;
+      tail = newOrderLocation;
+      return;
+    } else {
+      new (newOrderLocation) Order_Intrusive{orderId, price, side, traderId, volume, tail, nullptr};
+      tail->next = newOrderLocation;
+      tail = newOrderLocation;
+      return;
+    }
+  }
+};
 
 template <typename SearchPolicy, int SlabSize>
 class Orderbook_Slab {
@@ -36,17 +70,29 @@ public:
     return OrderbookError::InvalidOrder;
   }
 
-  private:
-  // template <typename T, typename>
+private:
+  template <typename T, typename Compare>
+  [[nodiscard]] MatchResult AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price, Volume volume,
+                                     TraderId traderId, Compare comp);
+
+  template <typename T, typename Compare>
+  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels, Compare comp);
+  template <typename T, typename Compare>
+  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
+                                           Volume newVolume, Compare comp);
+
+  template <typename Compare>
+  [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
+                                       TraderId incomingTraderId, Compare comp);
 
 private:
   std::vector<std::pair<Price, PriceLevel_Intrusive>> bidLevels;
   std::vector<std::pair<Price, PriceLevel_Intrusive>> askLevels;
   std::vector<OrderEvent> eventLog;
-  SlabAllocator<Order_Intrusive, SlabSize> alloc;
-  std::unordered_map<OrderId, Order_Intrusive*> idMap;
+  SlabAllocator<Order_Intrusive, SlabSize> allocator;
+  std::unordered_map<OrderId, Order_Intrusive *> idMap;
 
-public: 
+public:
   // --- getters ---
   // idMap
   [[nodiscard]] bool HasOrder(OrderId orderId) const { return idMap.contains(orderId); }
@@ -105,3 +151,63 @@ public:
   // event log
   [[nodiscard]] const std::vector<OrderEvent> &GetEventLog() const { return eventLog; }
 };
+
+// ----------------------------- AddOrder --------------------------------
+template <typename SearchPolicy, int SlabSize>
+
+[[nodiscard]] MatchResult Orderbook_Slab<SearchPolicy, SlabSize>::AddOrder(OrderId orderId, Side side, Price price,
+                                                                           Volume volume, TraderId traderId) {
+  Timestamp ts = now_ns();
+  if (idMap.contains(orderId)) {
+    MatchResult matchResult{.filledVolume = 0,
+                            .restingVolume = volume,
+                            .status = OrderStatus::Rejected,
+                            .error = OrderbookError::DuplicateId};
+    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+    return matchResult;
+  }
+
+  if (side == Side::Bid) {
+    return AddOrder(ts, bidLevels, side, orderId, price, volume, traderId, std::less<Price>());
+  } else {
+    return AddOrder(ts, askLevels, side, orderId, price, volume, traderId, std::greater<Price>());
+  }
+}
+
+template <typename SearchPolicy, int SlabSize>
+template <typename T, typename Compare>
+[[nodiscard]] MatchResult Orderbook_Slab<SearchPolicy, SlabSize>::AddOrder(Timestamp ts, T &levels, Side side,
+                                                                           OrderId orderId, Price price, Volume volume,
+                                                                           TraderId traderId, Compare comp) {
+
+  auto newOrderLocation = allocator.allocate();
+  // allocation failure
+  if (newOrderLocation == nullptr) {
+    MatchResult matchResult{.filledVolume = 0,
+                            .restingVolume = volume,
+                            .status = OrderStatus::Rejected,
+                            .error = OrderbookError::AllocationFailure};
+    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+    return matchResult;
+  }
+
+  const MatchResult matchResult = HandleFill(side, price, volume, traderId, comp);
+  if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
+    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+    return matchResult;
+  }
+
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), price, comp);
+  if (res == SearchResult::notFound) {
+    levelIt = levels.insert(levelIt, {price, PriceLevel_Intrusive{}});
+  }
+
+
+  auto &priceLevel = levelIt->second;
+
+  priceLevel.addOrder(newOrderLocation, orderId, price, side, traderId, volume);
+  idMap.emplace(orderId, newOrderLocation);
+
+  eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
+  return matchResult;
+}

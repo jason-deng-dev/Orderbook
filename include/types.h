@@ -25,24 +25,15 @@ struct PriceLevel {
   std::list<Order> orders;
 };
 
-struct Order_Intrusive {
-  OrderId id;
-  Price price;
-  Side side;
-  TraderId trader_id;
-  Volume volume;
-  Order_Intrusive * prev;
-  Order_Intrusive * next;
+enum class OrderbookError : uint8_t {
+  OK,
+  DuplicateId,
+  OrderNotFound,
+  InvalidVolume,
+  InvalidPrice,
+  InvalidOrder,
+  AllocationFailure
 };
-
-struct PriceLevel_Intrusive {
-  Volume total_volume = 0;
-  Order_Intrusive* head {};
-  Order_Intrusive* tail {};
-};
-
-
-enum class OrderbookError : uint8_t { OK, DuplicateId, OrderNotFound, InvalidVolume, InvalidPrice, InvalidOrder};
 
 enum class OrderStatus : uint8_t { Rejected, Resting, PartiallyFilled, Filled };
 

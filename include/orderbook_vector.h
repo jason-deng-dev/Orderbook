@@ -54,9 +54,7 @@ private:
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
                                        TraderId incomingTraderId, Compare comp);
 
-  template <typename Levels, typename Compare>
-  [[nodiscard]] size_t FindLevelIndex(const Levels &levels, Price price, Compare comp);
-
+                                       
   std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
   std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;

@@ -154,7 +154,7 @@ enum class SearchResult{
   - where if need to insert the price, insert it before the returned iterator
 
 # Orderbook Slab Allocator Intrusive containers Implementations
-## Intrusive
+**Intrusive**
 - intrusive container stores its linkage pointers inside the element itself, not in a separate node
 Current implementation: Non-intrusive `std::list<Order>`
 ```c
@@ -185,7 +185,7 @@ Why?
 - O(1) removal from middle (Given an Order*, can unlink in O(1) without searching the queue)
 - Cache-friendly: Pointer travels with the data
 
-## Slab allocator
+**Slab allocator**
 - pre-allocating massive contiguous blocks of memory (slabs/pages) at system startup
 - carves these slabs into fixed-size chunks exactly the size of Order struct
   - to allocate an order, pop a pointer off a free-list
@@ -193,9 +193,5 @@ Why?
 
 Result: Zero heap allocation on hot path, zero fragmentation and incredible cache locality because all orders live in contiguous memory arrays
 
-Minimal allocator needs to provide:
-1. value_type
-2. converting copy constructor (templated)
-3. allocate
-4. deallocate
-5. operator== / operator!=
+
+

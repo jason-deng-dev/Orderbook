@@ -7,7 +7,7 @@ layout, and the measurement discipline behind low-latency claims.
 ## Quick start
 
 ```bash
-cmake --preset default -DCMAKE_BUILD_TYPE=Release
+cmake --preset default
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
@@ -16,6 +16,5 @@ ctest --test-dir build --output-on-failure
 ```bash
 cmake --preset default -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-
 taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=1 --benchmark_report_aggregates_only=true
 ```

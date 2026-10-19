@@ -28,9 +28,9 @@ CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE
 
 Logical CPUs 0/1 are SMT siblings on physical core 0, 2/3 on core 1, 4/5 on core 2, and so on. 
 
-We can use `taskset -c 2,4`  to set an affinity mask on the process, which is inherited by all threads. Kernel scheduler picks which allowed CPU each thread runs on, and can migrate threads between 2 and 4.
+We can use `taskset -c 2,4`  to restrict process to two logical CPUs. Kernel scheduler picks which allowed CPU each thread runs on, and can migrate threads between 2 and 4.
 
-Thus in addition to using using taskset -c 2,4 we must pin consumer/producer threads inside of SPSC Fifo benchmarks via `pthread_setaffinity_np()`
+Thus in addition to using using taskset -c 2,4 we must pin consumer/producer threads inside of SPSC Fifo benchmarks via `pthread_setaffinity_np()` 
 
 ## Codegen parity
 

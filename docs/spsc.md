@@ -184,14 +184,3 @@ bool pop(T &value) {
   return true;
 }
 ```
-
-# Benchmark
-
-| Measurement                                                    | Why                                         |
-| -------------------------------------------------------------- | ------------------------------------------- |
-| Parse-to-book p50/p99/p99.9, single-threaded vs SPSC-pipelined | Does ring actually help?                    |
-| Ring handoff cost (ns/msg)                                     | overhead paid                               |
-| Throughput (msg/sec) both modes                                | does pipelining improve throughput          |
-| Ring occupancy distribution                                    | is the producer or consumer the bottleneck? |
-| Cycles/msg producer, cycles/msg consumer                       | where the time goes                         |
-| Book-state hashes, both modes                                  | correctness                                 |

@@ -84,7 +84,7 @@ static size_t SetupSlackedQueue(FIFO &fifo, size_t slackTarget) {
 static const size_t cachedSlackSize = SetupSlackedQueue(fifo_cached_slack, slackFifoCapacity / 2);
 static const size_t baseSlackSize = SetupSlackedQueue(fifo_slack, slackFifoCapacity / 2);
 
-static void BM_Fifo_Cached_Throughput_Slacked(benchmark::State &state) {
+static void BM_Slacked_Fifo_Cached_Throughput(benchmark::State &state) {
   pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
   for (auto _ : state) {
@@ -101,7 +101,7 @@ static void BM_Fifo_Cached_Throughput_Slacked(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations() / 2);
 }
 
-static void BM_Fifo_Throughput_Slacked(benchmark::State &state) {
+static void BM_Slacked_Fifo_Throughput(benchmark::State &state) {
   pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
   for (auto _ : state) {
@@ -121,5 +121,5 @@ static void BM_Fifo_Throughput_Slacked(benchmark::State &state) {
 
 BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
 BENCHMARK(BM_Fifo_Cached_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
-BENCHMARK(BM_Fifo_Throughput_Slacked)->Threads(2)->Iterations(static_cast<int64_t>(baseSlackSize))->UseRealTime();
-BENCHMARK(BM_Fifo_Cached_Throughput_Slacked)->Threads(2)->Iterations(static_cast<int64_t>(cachedSlackSize))->UseRealTime();
+BENCHMARK(BM_Slacked_Fifo_Throughput)->Threads(2)->Iterations(static_cast<int64_t>(baseSlackSize))->UseRealTime();
+BENCHMARK(BM_Slacked_Fifo_Cached_Throughput)->Threads(2)->Iterations(static_cast<int64_t>(cachedSlackSize))->UseRealTime();

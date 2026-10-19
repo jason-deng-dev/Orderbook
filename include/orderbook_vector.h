@@ -54,7 +54,7 @@ private:
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
                                        TraderId incomingTraderId, Compare comp);
 
-                                       
+
   std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
   std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
@@ -87,10 +87,10 @@ public:
   [[nodiscard]] Volume GetTotalVolumeAtPrice(Price price, Side side) const {
     if (side == Side::Bid) {
       auto [res, levelIt] = SearchPolicy::search(bidLevels.begin(), bidLevels.end(), price, std::less<Price>());
-      return res == SearchResult::found ? levelIt->second.total_volume : 0;
+      return res == SearchResult::found ? levelIt->second.totalVolume() : 0;
     } else {
       auto [res, levelIt] = SearchPolicy::search(askLevels.begin(), askLevels.end(), price, std::greater<Price>());
-      return res == SearchResult::found ? levelIt->second.total_volume : 0;
+      return res == SearchResult::found ? levelIt->second.totalVolume() : 0;
     }
   };
 
@@ -166,7 +166,6 @@ template <typename Compare>
         remainingVolume -= matchQty;
 
         restingOrder.volume -= matchQty;
-        priceLevel.total_volume -= matchQty;
 
         if (restingOrder.volume == 0) {
           idMap.erase(restingOrder.id);
@@ -246,7 +245,6 @@ template <typename T, typename Compare>
   }
 
   auto &priceLevel = levelIt->second;
-  priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
 
@@ -282,16 +280,12 @@ Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iter
 
   PriceLevel &priceLevel = levelIt->second;
 
-  assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
-
-  priceLevel.total_volume -= orderIt->volume;
   idMap.erase(orderIt->id);
   priceLevel.orders.erase(orderIt);
 
   if (priceLevel.orders.empty()) {
     levels.erase(levelIt);
   }
-
   eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
   return OrderbookError::OK;
 }
@@ -335,7 +329,6 @@ template <typename T, typename Compare>
 
   Volume volumeChange = newVolume - orderIt->volume;
 
-  priceLevel.total_volume += volumeChange;
   orderIt->volume = newVolume;
 
   eventLog.emplace_back(MakeModifyEvent(ts, orderIt->id, newVolume, OrderbookError::OK));

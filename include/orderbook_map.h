@@ -89,10 +89,10 @@ public:
 
     if (side == Side::Bid) {
       auto it = bidLevels.find(price);
-      return (it != bidLevels.end()) ? it->second.total_volume : 0;
+      return (it != bidLevels.end()) ? it->second.totalVolume() : 0;
     } else {
       auto it = askLevels.find(price);
-      return (it != askLevels.end()) ? it->second.total_volume : 0;
+      return (it != askLevels.end()) ? it->second.totalVolume() : 0;
     }
   };
 

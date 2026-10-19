@@ -37,7 +37,6 @@ template <typename T>
       .id = orderId, .price = price, .side = side, .trader_id = traderId, .volume = matchResult.restingVolume};
   auto [levelIt, inserted] = levels.try_emplace(price);
   auto &priceLevel = levelIt->second;
-  priceLevel.total_volume += matchResult.restingVolume;
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
 
@@ -69,9 +68,8 @@ template <typename T>
 
   PriceLevel &priceLevel = levelIt->second;
 
-  assert(priceLevel.total_volume >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
+  assert(priceLevel.totalVolume() >= orderIt->volume && "CRITICAL BUG: level volume below order volume");
 
-  priceLevel.total_volume -= orderIt->volume;
   idMap.erase(orderIt->id);
   priceLevel.orders.erase(orderIt);
 
@@ -119,7 +117,6 @@ template <typename T>
 
   Volume volumeChange = newVolume - orderIt->volume;
 
-  priceLevel.total_volume += volumeChange;
   orderIt->volume = newVolume;
 
   eventLog.emplace_back(MakeModifyEvent(ts, orderIt->id, newVolume, OrderbookError::OK));
@@ -168,7 +165,6 @@ template <typename T>
         remainingVolume -= matchQty;
 
         restingOrder.volume -= matchQty;
-        priceLevel.total_volume -= matchQty;
 
         if (restingOrder.volume == 0) {
           idMap.erase(restingOrder.id);

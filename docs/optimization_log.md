@@ -245,6 +245,10 @@ The slot index stays `cursor & (capacity - 1)` in both versions, so only cursor 
 
 I expect this to reduce instructions and conditional operations per push and pop. The benchmark loop spends its time in these checks, so the saving should appear as lower cycles per item and higher throughput.
 
+**event logging inside orderbook incurs heavy hot path run time cost**
+Currently, we perform eventLog.emplace_back() across Add/Delete/Modify operations. On the hotpath this incurs the cost of consuming resources to constructing an event in place in our eventLog, across every single operation, which I believe adds a meaningful penalty to our performance.
+
+I believe that if we offload the logging to a dedicated thread via a lock-free SPSC ring buffer, we can eliminate hot-path memory writes and increase our Orderbook throughput.
 
 # Log 2: Monotonic cached FIFO (git tag: v2-fifo-monotonic)
 
@@ -524,5 +528,6 @@ Log 1's branch-misprediction explanation was based on the broken reset implement
 
 # Planned optimizations
 Orderbook optimization
+- replace std::optional return values to std::expected
 - intrusive slab orderbook
 - event log spsc

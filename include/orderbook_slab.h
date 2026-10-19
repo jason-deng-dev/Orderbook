@@ -42,9 +42,9 @@ private:
                                      TraderId traderId, Compare comp);
 
   template <typename T, typename Compare>
-  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels, Compare comp);
+  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts,  Order_Intrusive* orderPtr, T &levels, Compare comp);
   template <typename T, typename Compare>
-  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
+  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts,  Order_Intrusive* orderPtr, T &levels,
                                            Volume newVolume, Compare comp);
 
   template <typename Compare>
@@ -262,4 +262,87 @@ template <typename Compare>
 
   return {
       .filledVolume = filledVolume, .restingVolume = remainingVolume, .status = status, .error = OrderbookError::OK};
+}
+
+// ----------------------------- DeleteOrder --------------------------------
+template <typename SearchPolicy, int SlabSize>
+[[nodiscard]] OrderbookError Orderbook_Slab<SearchPolicy, SlabSize>::DeleteOrder(OrderId orderId) {
+  Timestamp ts = now_ns();
+  auto mapIt = idMap.find(orderId);
+  if (mapIt == idMap.end()) {
+    eventLog.emplace_back(MakeDeleteEvent(ts, orderId, OrderbookError::OrderNotFound));
+    return OrderbookError::OrderNotFound;
+  }
+  auto orderPtr = mapIt->second;
+
+  if (orderPtr->side == Side::Bid) {
+    return DeleteOrder(ts, orderPtr, bidLevels, std::less<Price>());
+  } else {
+    return DeleteOrder(ts, orderPtr, askLevels, std::greater<Price>());
+  }
+};
+
+template <typename SearchPolicy, int SlabSize>
+template <typename T, typename Compare>
+[[nodiscard]] OrderbookError
+Orderbook_Slab<SearchPolicy, SlabSize>::DeleteOrder(Timestamp ts, Order_Intrusive* orderPtr, T &levels, Compare comp) {
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderPtr->price, comp);
+
+  assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
+
+  auto &priceLevel = levelIt->second;
+
+  idMap.erase(orderPtr->id);
+  priceLevel.erase(orderPtr);
+
+  if (priceLevel.empty()) {
+    levels.erase(levelIt);
+  }
+  eventLog.emplace_back(MakeDeleteEvent(ts, orderPtr->id, OrderbookError::OK));
+  return OrderbookError::OK;
+}
+
+// ----------------------------- ModifyOrder --------------------------------
+template <typename SearchPolicy, int SlabSize>
+[[nodiscard]] OrderbookError Orderbook_Slab<SearchPolicy, SlabSize>::ModifyOrder(OrderId orderId, Volume newVolume) {
+  Timestamp ts = now_ns();
+  if (newVolume == 0) {
+    return DeleteOrder(orderId);
+  }
+
+  auto mapIt = idMap.find(orderId);
+
+  if (mapIt == idMap.end()) {
+    eventLog.emplace_back(MakeModifyEvent(ts, orderId, newVolume, OrderbookError::OrderNotFound));
+    return OrderbookError::OrderNotFound;
+  }
+  auto orderPtr = mapIt->second;
+  if (orderPtr->volume <= newVolume) {
+    eventLog.emplace_back(MakeModifyEvent(ts, orderId, newVolume, OrderbookError::InvalidVolume));
+    return OrderbookError::InvalidVolume; // can't add orders or cancel 0 orders
+  }
+
+  if (orderPtr->side == Side::Bid) {
+    return ModifyOrder(ts, orderPtr, bidLevels, newVolume, std::less<Price>());
+  } else {
+    return ModifyOrder(ts, orderPtr, askLevels, newVolume, std::greater<Price>());
+  }
+}
+
+template <typename SearchPolicy, int SlabSize>
+template <typename T, typename Compare>
+[[nodiscard]] OrderbookError Orderbook_Slab<SearchPolicy, SlabSize>::ModifyOrder(Timestamp ts,
+                                                                          Order_Intrusive* orderPtr, T &levels,
+                                                                         Volume newVolume, Compare comp) {
+  auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderPtr->price, comp);
+
+  assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
+  PriceLevel &priceLevel = levelIt->second;
+
+  Volume volumeChange = newVolume - orderPtr->volume;
+
+  orderPtr->volume = newVolume;
+
+  eventLog.emplace_back(MakeModifyEvent(ts, orderPtr->id, newVolume, OrderbookError::OK));
+  return OrderbookError::OK;
 }

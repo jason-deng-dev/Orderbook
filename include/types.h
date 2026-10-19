@@ -24,13 +24,15 @@ struct PriceLevel {
   std::list<Order> orders;
 
   Volume totalVolume() const {
-    Volume res;
+    Volume res = 0;
     for (const auto& o : orders) {
       res += o.volume;
     }
     return res;
   }
 };
+
+
 struct Order_Intrusive {
   OrderId id;
   Price price;
@@ -71,6 +73,16 @@ struct PriceLevel_Intrusive {
       tail = newOrderLocation;
       return;
     }
+  }
+
+  Volume totalVolume() const {
+    Volume res = 0;
+    auto curr = head;
+    while (curr != nullptr) {
+      res += curr->volume;
+      curr = curr->next;
+    }
+    return res;
   }
 };
 

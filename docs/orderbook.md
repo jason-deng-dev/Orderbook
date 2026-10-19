@@ -153,8 +153,7 @@ enum class SearchResult{
 - if searchPrice doesn't exist: return <SearchResult::notFound, std::pair<Price, PriceLevel>::iterator>
   - where if need to insert the price, insert it before the returned iterator
 
-# Performance refactor plan
-
+# Orderbook Slab Allocator Intrusive containers Implementations
 ## Intrusive
 - intrusive container stores its linkage pointers inside the element itself, not in a separate node
 Current implementation: Non-intrusive `std::list<Order>`
@@ -186,19 +185,17 @@ Why?
 - O(1) removal from middle (Given an Order*, can unlink in O(1) without searching the queue)
 - Cache-friendly: Pointer travels with the data
 
-## Polymorphic Memory Resource (C++17) (std::pmr)
-way to plug a custom allocator into a container without changing the container type
-```c
-std::pmr::monotonic_buffer_resource pool { size };
-std::pmr::list<Order> queue{&pool};
-```
-Why?
-- hot-path allocation avoidance. By pre-allocating a big buffer once, every order allocation comes from that buffer in O(1) with no malloc, no locks, no syscalls
+## Slab allocator
+- pre-allocating massive contiguous blocks of memory (slabs/pages) at system startup
+- carves these slabs into fixed-size chunks exactly the size of Order struct
+  - to allocate an order, pop a pointer off a free-list
+  - to deallocate (cancel/fill), push teh pointer back onto the free-list
 
-## Pooled
-create a pool memory resource: a pre-allocated slab of memory that hands out fixed-size chunks.
-- For an intrusive queue of Orders, the pool is sized to hold N orders
-```c
-Order* order = pool.allocate(); // to allocate
-```
+Result: Zero heap allocation on hot path, zero fragmentation and incredible cache locality because all orders live in contiguous memory arrays
 
+Minimal allocator needs to provide:
+1. value_type
+2. converting copy constructor (templated)
+3. allocate
+4. deallocate
+5. operator== / operator!=

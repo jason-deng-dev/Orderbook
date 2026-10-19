@@ -16,5 +16,5 @@ ctest --test-dir build --output-on-failure
 ```bash
 cmake --preset default -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=1 --benchmark_report_aggregates_only=true
+taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=25 --benchmark_report_aggregates_only=true
 ```

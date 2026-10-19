@@ -510,7 +510,6 @@ Slacked pair, Log 2 only:
 | cache misses | 11.77 M | 7.97 M | -32.3% |
 | cache miss rate | 0.994% | 0.672% | -0.322 pp |
 | task-clock | 2.66 s | 2.66 s | +0.2% |
-
 ## Analysis
 In a saturated benchmark run, the cached queue processes teh same instruction volume with roughly half the cycles:
 - Instructions: 72.03 G vs 68.31 G, -5.2%.
@@ -526,7 +525,170 @@ Against Log 1's reset implementation, cached mean latency fell from 3.01 ns to 0
 
 Log 1's branch-misprediction explanation was based on the broken reset implementation, so it is not the explanation for this result. Run-to-run variance remains high (cached CV 13.41%), so repeated runs and medians are required before quoting a speedup.
 
-# Planned optimizations
-Orderbook optimization
-- intrusive slab orderbook
-- event log spsc
+
+# Log 3: Remove total_volume from PriceLevel (git tag: v3-price-level-refactor)
+
+## Changes
+Remove total_volume from PriceLevel
+Remove the bookkeeping of the variable from Orderbook_Map and Orderbook_Vector Implemenations
+
+## Hypothesis
+```c++
+HandleFill(){
+  priceLevel.total_volume -= matchQty;
+}
+AddOrder() {
+  priceLevel.total_volume += matchResult.restingVolume;
+}
+DeleteOrder() {
+ priceLevel.total_volume -= orderIt->volume;
+}
+
+ModifyOrder() {
+  priceLevel.total_volume += volumeChange;
+}
+```
+I believe that by removing total_volume from PriceLevel, and by removing the bookkeeping from Add/Modify/Delete orders, as well as from HandleFill, that we will see a slight and noticable increase in throughput thanks to the decreased overhead from having to update total volume.
+
+## Snapshot before change
+```bash
+taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true
+2026-10-19T14:48:32+08:00
+Running ./build/benchmarks
+Run on (16 X 4691.07 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 1024 KiB (x8)
+  L3 Unified 98304 KiB (x1)
+Load Average: 0.10, 0.30, 0.19
+-----------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                               Time             CPU   Iterations UserCounters...
+-----------------------------------------------------------------------------------------------------------------------------------------
+BM_Orderbook_Map_Throughput/iterations:121556_mean                                   77.7 ns         77.7 ns          100 items_per_second=12.8792M/s
+BM_Orderbook_Map_Throughput/iterations:121556_median                                 77.6 ns         77.6 ns          100 items_per_second=12.8878M/s
+BM_Orderbook_Map_Throughput/iterations:121556_stddev                                 1.01 ns         1.01 ns          100 items_per_second=153.374k/s
+BM_Orderbook_Map_Throughput/iterations:121556_cv                                     1.30 %          1.29 %           100 items_per_second=1.19%
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_mean                   74.1 ns         74.1 ns          100 items_per_second=13.514M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_median                 73.7 ns         73.7 ns          100 items_per_second=13.5747M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_stddev                 2.91 ns         2.87 ns          100 items_per_second=440.605k/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_cv                     3.93 %          3.88 %           100 items_per_second=3.26%
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_mean                   77.1 ns         77.1 ns          100 items_per_second=12.9835M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_median                 76.8 ns         76.8 ns          100 items_per_second=13.0287M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_stddev                 2.88 ns         2.88 ns          100 items_per_second=399.192k/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_cv                     3.73 %          3.73 %           100 items_per_second=3.07%
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_mean         74.7 ns         74.7 ns          100 items_per_second=13.3955M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_median       74.6 ns         74.6 ns          100 items_per_second=13.398M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_stddev      0.485 ns        0.477 ns          100 items_per_second=85.3791k/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv           0.65 %          0.64 %           100 items_per_second=0.64%
+
+ Performance counter stats for './build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true':
+
+       32604097722      cycles                                                                
+       58935751355      instructions                                                          
+          62500335      cache-misses                                                          
+        1578835982      cache-references                                                      
+         260056155      branch-misses                                                         
+       12528626113      branches                                                              
+           6780.53 msec task-clock                                                            
+
+       6.787662535 seconds time elapsed
+
+       5.557717000 seconds user
+       1.219499000 seconds sys
+```
+
+## Snapshot after change
+```bash
+taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true
+2026-10-19T17:06:45+08:00
+Running ./build/benchmarks
+Run on (16 X 4691.07 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 1024 KiB (x8)
+  L3 Unified 98304 KiB (x1)
+Load Average: 0.16, 0.12, 0.04
+-----------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                               Time             CPU   Iterations UserCounters...
+-----------------------------------------------------------------------------------------------------------------------------------------
+BM_Orderbook_Map_Throughput/iterations:121556_mean                                   77.5 ns         77.5 ns          100 items_per_second=12.9305M/s
+BM_Orderbook_Map_Throughput/iterations:121556_median                                 77.0 ns         77.0 ns          100 items_per_second=12.9882M/s
+BM_Orderbook_Map_Throughput/iterations:121556_stddev                                 4.25 ns         4.24 ns          100 items_per_second=467.908k/s
+BM_Orderbook_Map_Throughput/iterations:121556_cv                                     5.48 %          5.47 %           100 items_per_second=3.62%
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_mean                   73.2 ns         73.1 ns          100 items_per_second=13.6735M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_median                 73.3 ns         73.2 ns          100 items_per_second=13.6542M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_stddev                0.816 ns        0.657 ns          100 items_per_second=123.328k/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_cv                     1.12 %          0.90 %           100 items_per_second=0.90%
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_mean                   75.3 ns         75.3 ns          100 items_per_second=13.2739M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_median                 75.3 ns         75.3 ns          100 items_per_second=13.2761M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_stddev                0.539 ns        0.536 ns          100 items_per_second=94.5346k/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_cv                     0.72 %          0.71 %           100 items_per_second=0.71%
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_mean         73.1 ns         73.1 ns          100 items_per_second=13.6819M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_median       73.2 ns         73.1 ns          100 items_per_second=13.6763M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_stddev      0.594 ns        0.566 ns          100 items_per_second=106.023k/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv           0.81 %          0.77 %           100 items_per_second=0.77%
+
+ Performance counter stats for './build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true':
+
+       32102554507      cycles                                                                
+       58803641676      instructions                                                          
+          95033949      cache-misses                                                          
+        1905246759      cache-references                                                      
+         262368441      branch-misses                                                         
+       12586637248      branches                                                              
+           9004.98 msec task-clock                                                            
+
+       9.063867765 seconds time elapsed
+
+       4.706466000 seconds user
+       4.279694000 seconds sys
+```
+
+
+
+
+
+
+
+
+
+
+
+
+## Stat comparison
+
+### Per-benchmark results (100 repetitions)
+
+| Benchmark | Mean latency (before → after) | Δ | Median latency (before → after) | Δ | Mean throughput (before → after) | Δ |
+|-----------|-------------------------------|---|-------------------------------|------|----------------------------------|---|
+| BM_Orderbook_Map | 77.7 → 77.5 ns | -0.26% | 77.6 → 77.0 ns | -0.77% | 12.879 → 12.931 M/s | +0.40% |
+| BM_Orderbook_Vector_LinearSearch | 74.1 → 73.2 ns | -1.22% | 73.7 → 73.3 ns | -0.54% | 13.514 → 13.674 M/s | +1.18% |
+| BM_Orderbook_Vector_BinarySearch | 77.1 → 75.3 ns | -2.34% | 76.8 → 75.3 ns | -1.95% | 12.984 → 13.274 M/s | +2.24% |
+| BM_Orderbook_Vector_BranchlessBinarySearch | 74.7 → 73.1 ns | -2.14% | 74.6 → 73.2 ns | -1.88% | 13.396 → 13.682 M/s | +2.14% |
+
+### Perf stat comparison
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| cycles | 32.60 G | 32.10 G | -1.54% |
+| instructions | 58.94 G | 58.80 G | -0.22% |
+| IPC | 1.81 | 1.83 | +1.34% |
+| branches | 12.53 G | 12.59 G | +0.46% |
+| branch misses | 260.06 M | 262.37 M | +0.89% |
+| branch miss rate | 2.0757% | 2.0845% | +0.0088 pp |
+| cache references | 1.579 G | 1.905 G | +20.67% |
+| cache misses | 62.50 M | 95.03 M | +52.05% |
+| cache miss rate | 3.9586% | 4.9880% | +1.0294 pp |
+| task-clock | 6780.53 ms | 9004.98 ms | +32.81% |
+| time elapsed | 6.79 s | 9.06 s | +33.53% |
+
+## Analysis
+We observe decreases in mean and median latency across all implementations. Map is effectively flat (-0.26% mean, -0.77% median). The vector implementations improve: Linear Search -1.22% mean / -0.54% median, Binary Search -2.34% / -1.95%, and Branchless Binary Search -2.14% / -1.88%.
+
+Binary and Branchless are the largest movers, and both exceed the noise level of this run (after-change CV 0.72% and 0.81%). Linear Search's mean gain is larger than its median gain, so part of that delta may be outlier-driven. Map shows no meaningful change.
+
+The perf counters do not corroborate a 2% per-item improvement: cycles and instructions are nearly unchanged (-1.54% and -0.22%) and IPC rises slightly, while task-clock and elapsed time rise by about a third because system time increased from 1.22 s to 4.28 s. 
+
+In conclusion I believe that in our hotpath which is dominated by emplace, tree traversal (in map implementation), and linear/binary/branchless search (in vector implementation), as well as other O(1) operations, our removal of a single O(1) operation from our hotpath is not able to meaningfully produce any delta.

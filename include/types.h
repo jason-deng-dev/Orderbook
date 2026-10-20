@@ -52,8 +52,7 @@ struct PriceLevel_Intrusive {
 
   // toDelete must be an Order_Intrusive inside this priceLevel
   template <int SlabSize>
-  bool erase(Order_Intrusive *toDelete, SlabAllocator<Order_Intrusive, SlabSize> &allocator) {
-    if (toDelete == nullptr) return false;
+  void deleteOrder(Order_Intrusive *toDelete, SlabAllocator<Order_Intrusive, SlabSize> &allocator) {
     --order_count;
     if (toDelete->prev) {
       toDelete->prev->next = toDelete->next;
@@ -65,15 +64,14 @@ struct PriceLevel_Intrusive {
     } else {
       tail = toDelete->prev;
     }
-
-    // manually call destructor;
     toDelete->~Order_Intrusive();
     allocator.deallocate(toDelete);
-    return true;
+    return;
   }
 
-  void addOrder(Order_Intrusive *newOrderLocation, OrderId orderId, Price price, Side side, TraderId traderId,
-                Volume volume) {
+  // newOrderLocation must be a newly allocated memory location
+  void addOrder(Order_Intrusive *newOrderLocation, OrderId orderId, Price price, Side side,
+                              TraderId traderId, Volume volume) {
     ++order_count;
     if (head == nullptr && tail == nullptr) {
       new (newOrderLocation) Order_Intrusive{orderId, price, side, traderId, volume, nullptr, nullptr};

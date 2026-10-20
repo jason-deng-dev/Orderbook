@@ -230,7 +230,7 @@ template <typename Compare>
 
         if (restingOrder.volume == 0) {
           idMap.erase(restingOrder.id);
-          restingOrderPtr = priceLevel.erase(restingOrderPtr);
+          priceLevel.deleteOrder(restingOrderPtr,allocator);
         } else {
           break; // resting order was paritally filled, meaning incoming order was filled
         }
@@ -293,7 +293,7 @@ Orderbook_Slab<SearchPolicy, SlabSize>::DeleteOrder(Timestamp ts, Order_Intrusiv
   auto &priceLevel = levelIt->second;
 
   idMap.erase(orderPtr->id);
-  priceLevel.erase(orderPtr);
+  priceLevel.deleteOrder(orderPtr,allocator);
 
   if (priceLevel.empty()) {
     levels.erase(levelIt);

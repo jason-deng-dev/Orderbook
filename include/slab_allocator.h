@@ -39,7 +39,7 @@ public:
   }
 
   auto allocatedCount() const { return allocated_count_; }
-  auto poolSize() const { return pool_; }
+  auto pool() const { return pool_; }
 
 private:
   alignas(T) char pool_[SlabSize * sizeof(T)];

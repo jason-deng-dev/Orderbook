@@ -8,7 +8,12 @@
 inline constexpr size_t kCacheLineSize = 64;
 inline constexpr bool isPowerOfTwo(size_t n) { return n != 0 && (n & (n - 1)) == 0; }
 
-
+static size_t checkedCapacity(size_t cap) {
+  if (!isPowerOfTwo(cap)) {
+    throw std::invalid_argument("capacity must be power of 2");
+  }
+  return cap;
+}
 
 template <typename T, typename Alloc = std::allocator<T>>
 class SpscFifo : private Alloc {
@@ -27,9 +32,7 @@ class SpscFifo : private Alloc {
 
 public:
   explicit SpscFifo(size_t cap = 65536, Alloc const &alloc = Alloc{})
-      : Alloc(alloc), capacity_(cap), ring_(Traits::allocate(*this, capacity_)) {
-    if (!isPowerOfTwo(cap)) throw std::invalid_argument("capacity must be a power of 2!");
-  }
+      : Alloc(alloc), capacity_(checkedCapacity(cap)), ring_(Traits::allocate(*this, capacity_)) {}
 
   ~SpscFifo() {
     auto pushCursor = pushCursor_.load(std::memory_order::relaxed);

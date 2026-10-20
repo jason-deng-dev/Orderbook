@@ -75,9 +75,6 @@ static void BM_Orderbook_Slab_BranchlessBinarySearch_Throughput(benchmark::State
   RunOnePass(state, ob);
 }
 
-
-
-
 BENCHMARK(BM_Orderbook_Map_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_BinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
@@ -85,4 +82,3 @@ BENCHMARK(BM_Orderbook_Vector_BranchlessBinarySearch_Throughput)->Iterations(sta
 BENCHMARK(BM_Orderbook_Slab_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Slab_BinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Slab_BranchlessBinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
-

@@ -12,7 +12,6 @@
 template <typename SearchPolicy>
 class Orderbook_Vector {
 public:
-  Orderbook_Vector() {eventLog.reserve(1'000'000);}
   [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);
@@ -41,14 +40,14 @@ public:
 
 private:
   template <typename T, typename Compare>
-  [[nodiscard]] MatchResult AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price, Volume volume,
+  [[nodiscard]] MatchResult AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                      TraderId traderId, Compare comp);
 
   template <typename T, typename Compare>
-  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels, Compare comp);
+  [[nodiscard]] OrderbookError DeleteOrder(std::list<Order>::iterator orderIt, T &levels, Compare comp);
   template <typename T, typename Compare>
-  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
-                                           Volume newVolume, Compare comp);
+  [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume,
+                                           Compare comp);
 
   template <typename Compare>
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
@@ -58,8 +57,6 @@ private:
   std::vector<std::pair<Price, PriceLevel>> bidLevels; // best bid at end
   std::vector<std::pair<Price, PriceLevel>> askLevels; // best ask at end
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
-
-  std::vector<OrderEvent> eventLog;
 
 public:
   // --- getters ---
@@ -115,9 +112,6 @@ public:
     }
     return orderCount;
   };
-
-  // event log
-  [[nodiscard]] const std::vector<OrderEvent> &GetEventLog() const { return eventLog; }
 };
 
 // ----------------------------- HandleFill --------------------------------
@@ -208,31 +202,28 @@ template <typename SearchPolicy>
 
 [[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(OrderId orderId, Side side, Price price,
                                                                    Volume volume, TraderId traderId) {
-  Timestamp ts = now_ns();
   if (idMap.contains(orderId)) {
     MatchResult matchResult{.filledVolume = 0,
                             .restingVolume = volume,
                             .status = OrderStatus::Rejected,
                             .error = OrderbookError::DuplicateId};
-    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
     return matchResult;
   }
 
   if (side == Side::Bid) {
-    return AddOrder(ts, bidLevels, side, orderId, price, volume, traderId, std::less<Price>());
+    return AddOrder(bidLevels, side, orderId, price, volume, traderId, std::less<Price>());
   } else {
-    return AddOrder(ts, askLevels, side, orderId, price, volume, traderId, std::greater<Price>());
+    return AddOrder(askLevels, side, orderId, price, volume, traderId, std::greater<Price>());
   }
 }
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
-[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId,
+[[nodiscard]] MatchResult Orderbook_Vector<SearchPolicy>::AddOrder(T &levels, Side side, OrderId orderId,
                                                                    Price price, Volume volume, TraderId traderId,
                                                                    Compare comp) {
   const MatchResult matchResult = HandleFill(side, price, volume, traderId, comp);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
-    eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
     return matchResult;
   }
   // partial fill or resting
@@ -248,32 +239,29 @@ template <typename T, typename Compare>
   auto orderIt = priceLevel.orders.emplace(priceLevel.orders.end(), newOrder);
   idMap.emplace(orderId, orderIt);
 
-  eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
   return matchResult;
 }
 
 // ----------------------------- DeleteOrder --------------------------------
 template <typename SearchPolicy>
 [[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::DeleteOrder(OrderId orderId) {
-  Timestamp ts = now_ns();
   auto mapIt = idMap.find(orderId);
   if (mapIt == idMap.end()) {
-    eventLog.emplace_back(MakeDeleteEvent(ts, orderId, OrderbookError::OrderNotFound));
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
 
   if (orderIt->side == Side::Bid) {
-    return DeleteOrder(ts, orderIt, bidLevels, std::less<Price>());
+    return DeleteOrder(orderIt, bidLevels, std::less<Price>());
   } else {
-    return DeleteOrder(ts, orderIt, askLevels, std::greater<Price>());
+    return DeleteOrder(orderIt, askLevels, std::greater<Price>());
   }
 };
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
 [[nodiscard]] OrderbookError
-Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels, Compare comp) {
+Orderbook_Vector<SearchPolicy>::DeleteOrder(std::list<Order>::iterator orderIt, T &levels, Compare comp) {
   auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, comp);
 
   assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
@@ -286,14 +274,12 @@ Orderbook_Vector<SearchPolicy>::DeleteOrder(Timestamp ts, std::list<Order>::iter
   if (priceLevel.orders.empty()) {
     levels.erase(levelIt);
   }
-  eventLog.emplace_back(MakeDeleteEvent(ts, orderIt->id, OrderbookError::OK));
   return OrderbookError::OK;
 }
 
 // ----------------------------- ModifyOrder --------------------------------
 template <typename SearchPolicy>
 [[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(OrderId orderId, Volume newVolume) {
-  Timestamp ts = now_ns();
   if (newVolume == 0) {
     return DeleteOrder(orderId);
   }
@@ -301,27 +287,24 @@ template <typename SearchPolicy>
   auto mapIt = idMap.find(orderId);
 
   if (mapIt == idMap.end()) {
-    eventLog.emplace_back(MakeModifyEvent(ts, orderId, newVolume, OrderbookError::OrderNotFound));
     return OrderbookError::OrderNotFound;
   }
   auto orderIt = mapIt->second;
   if (orderIt->volume <= newVolume) {
-    eventLog.emplace_back(MakeModifyEvent(ts, orderId, newVolume, OrderbookError::InvalidVolume));
     return OrderbookError::InvalidVolume; // can't add orders or cancel 0 orders
   }
 
   if (orderIt->side == Side::Bid) {
-    return ModifyOrder(ts, orderIt, bidLevels, newVolume, std::less<Price>());
+    return ModifyOrder(orderIt, bidLevels, newVolume, std::less<Price>());
   } else {
-    return ModifyOrder(ts, orderIt, askLevels, newVolume, std::greater<Price>());
+    return ModifyOrder(orderIt, askLevels, newVolume, std::greater<Price>());
   }
 }
 
 template <typename SearchPolicy>
 template <typename T, typename Compare>
-[[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(Timestamp ts,
-                                                                         std::list<Order>::iterator orderIt, T &levels,
-                                                                         Volume newVolume, Compare comp) {
+[[nodiscard]] OrderbookError Orderbook_Vector<SearchPolicy>::ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume,
+                                                                         Compare comp) {
   auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderIt->price, comp);
 
   assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
@@ -331,6 +314,5 @@ template <typename T, typename Compare>
 
   orderIt->volume = newVolume;
 
-  eventLog.emplace_back(MakeModifyEvent(ts, orderIt->id, newVolume, OrderbookError::OK));
   return OrderbookError::OK;
 }

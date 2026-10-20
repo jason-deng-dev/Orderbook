@@ -9,8 +9,6 @@
 
 class Orderbook_Map {
 public:
-  Orderbook_Map() { eventLog.reserve(1'000'000); }
-
   [[nodiscard]] MatchResult AddOrder(OrderId orderId, Side side, Price price, Volume volume, TraderId traderId = -1);
   [[nodiscard]] OrderbookError ModifyOrder(OrderId orderId, Volume newVolume);
   [[nodiscard]] OrderbookError DeleteOrder(OrderId orderId);
@@ -39,13 +37,12 @@ public:
 
 private:
   template <typename T>
-  [[nodiscard]] MatchResult AddOrder(Timestamp ts, T &levels, Side side, OrderId orderId, Price price, Volume volume,
+  [[nodiscard]] MatchResult AddOrder(T &levels, Side side, OrderId orderId, Price price, Volume volume,
                                      TraderId traderId);
   template <typename T>
-  [[nodiscard]] OrderbookError DeleteOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels);
+  [[nodiscard]] OrderbookError DeleteOrder(std::list<Order>::iterator orderIt, T &levels);
   template <typename T>
-  [[nodiscard]] OrderbookError ModifyOrder(Timestamp ts, std::list<Order>::iterator orderIt, T &levels,
-                                           Volume newVolume);
+  [[nodiscard]] OrderbookError ModifyOrder(std::list<Order>::iterator orderIt, T &levels, Volume newVolume);
 
   [[nodiscard]] MatchResult HandleFill(Side side, Price incomingOrderPrice, Volume incomingOrderVolume,
                                        TraderId incomingTraderId);
@@ -55,8 +52,6 @@ private:
   std::map<Price, PriceLevel, std::less<Price>> askLevels;
 
   std::unordered_map<OrderId, std::list<Order>::iterator> idMap;
-
-  std::vector<OrderEvent> eventLog;
 
 public:
   // --- getters ---
@@ -117,7 +112,4 @@ public:
     }
     return orderCount;
   };
-
-  // event log
-  [[nodiscard]] const std::vector<OrderEvent> &GetEventLog() const { return eventLog; }
 };

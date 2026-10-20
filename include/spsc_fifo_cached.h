@@ -4,16 +4,9 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
+#include "fifo_helper.h"
 
-inline constexpr size_t kCacheLineSize_Cached = 64;
-inline constexpr bool isPowerOfTwo_Cached(size_t n) { return n != 0 && (n & (n - 1)) == 0; }
 
-static size_t checkedCapacity(size_t cap) {
-  if (!isPowerOfTwo_Cached(cap)) {
-    throw std::invalid_argument("capacity must be power of 2");
-  }
-  return cap;
-}
 
 template <typename T, typename Alloc = std::allocator<T>>
 class SpscFifo_Cached : private Alloc {
@@ -22,18 +15,18 @@ class SpscFifo_Cached : private Alloc {
   T *ring_;
 
   // --- Load and stored by Producer; loaded by Consumer ---
-  alignas(kCacheLineSize_Cached) std::atomic<std::size_t> pushCursor_{};
+  alignas(kCacheLineSize) std::atomic<std::size_t> pushCursor_{};
 
   // --- Producer's exclusive cache line ---
-  alignas(kCacheLineSize_Cached) std::size_t cachedPopCursor_{};
+  alignas(kCacheLineSize) std::size_t cachedPopCursor_{};
 
   // --- Load and stored by Consumer; loaded by Producer ---
-  alignas(kCacheLineSize_Cached) std::atomic<std::size_t> popCursor_{};
+  alignas(kCacheLineSize) std::atomic<std::size_t> popCursor_{};
 
   // --- Consumer's exclusive cache line ---
-  alignas(kCacheLineSize_Cached) std::size_t cachedPushCursor_{};
+  alignas(kCacheLineSize) std::size_t cachedPushCursor_{};
 
-  char padding_[kCacheLineSize_Cached - sizeof(size_t)];
+  char padding_[kCacheLineSize - sizeof(size_t)];
   static_assert(std::atomic<size_t>::is_always_lock_free);
 
 public:

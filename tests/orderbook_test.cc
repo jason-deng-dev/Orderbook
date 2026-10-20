@@ -200,8 +200,9 @@ void testFillExactMatchBothRemoved() {
 template <typename Orderbook>
 void testFillIncomingPartiallyFilledRestsRemainder() {
   Orderbook ob;
+  // Order 1 (Ask, price = 101, volume = 4, tradeId = 1)
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 4, 1), 4);
-
+  // Order 2 (Bid, price = 101, volume = 10, tradeId = 2)
   auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
   EXPECT_EQ(r.status, OrderStatus::PartiallyFilled);
   EXPECT_EQ(r.filledVolume, 4);

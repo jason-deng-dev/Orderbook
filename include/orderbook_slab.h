@@ -95,10 +95,10 @@ public:
   [[nodiscard]] size_t GetOrderCountAtPrice(Price price, Side side) const {
     if (side == Side::Bid) {
       auto [res, levelIt] = SearchPolicy::search(bidLevels.begin(), bidLevels.end(), price, std::less<Price>());
-      return res == SearchResult::found ? levelIt->second.orders.size() : 0;
+      return res == SearchResult::found ? levelIt->second.order_count : 0;
     } else {
       auto [res, levelIt] = SearchPolicy::search(askLevels.begin(), askLevels.end(), price, std::greater<Price>());
-      return res == SearchResult::found ? levelIt->second.orders.size() : 0;
+      return res == SearchResult::found ? levelIt->second.order_count : 0;
     }
   }
 
@@ -159,6 +159,8 @@ template <typename T, typename Compare>
 
   const MatchResult matchResult = HandleFill(side, price, volume, traderId, comp);
   if (matchResult.error != OrderbookError::OK || matchResult.status == OrderStatus::Filled) {
+    // incoming order never rests => return its slab slot
+    allocator.deallocate(newOrderLocation);
     eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
     return matchResult;
   }
@@ -170,7 +172,7 @@ template <typename T, typename Compare>
 
   auto &priceLevel = levelIt->second;
 
-  priceLevel.addOrder(newOrderLocation, orderId, price, side, traderId, volume);
+  priceLevel.addOrder(newOrderLocation, orderId, price, side, traderId, matchResult.restingVolume);
   idMap.emplace(orderId, newOrderLocation);
 
   eventLog.emplace_back(MakeAddEvent(ts, side, orderId, price, volume, traderId, matchResult));
@@ -210,12 +212,10 @@ template <typename Compare>
     while (remainingVolume > 0 && nextLevelIdx > 0 && shouldCross(levels[nextLevelIdx - 1].first)) {
       auto &priceLevel = levels[--nextLevelIdx].second;
 
-
-
       auto restingOrderPtr = priceLevel.head;
 
       while (remainingVolume > 0 && restingOrderPtr != nullptr) {
-        Order &restingOrder = *restingOrderPtr;
+        Order_Intrusive &restingOrder = *restingOrderPtr;
         // self-trade prevention
         if (restingOrder.trader_id != kUnknownTrader && restingOrder.trader_id == incomingTraderId) {
           restingOrderPtr = restingOrderPtr->next;
@@ -229,13 +229,16 @@ template <typename Compare>
         restingOrder.volume -= matchQty;
 
         if (restingOrder.volume == 0) {
+          // capture the next link before deleteOrder recycles this node
+          Order_Intrusive *nextOrderPtr = restingOrderPtr->next;
           idMap.erase(restingOrder.id);
-          priceLevel.deleteOrder(restingOrderPtr,allocator);
+          priceLevel.deleteOrder(restingOrderPtr, allocator);
+          restingOrderPtr = nextOrderPtr;
         } else {
           break; // resting order was paritally filled, meaning incoming order was filled
         }
       }
-      if (priceLevel.orders.empty()) {
+      if (priceLevel.empty()) {
         levels.erase(levels.begin() + nextLevelIdx);
       } else {
         // exit if order is filled
@@ -292,13 +295,15 @@ Orderbook_Slab<SearchPolicy, SlabSize>::DeleteOrder(Timestamp ts, Order_Intrusiv
 
   auto &priceLevel = levelIt->second;
 
-  idMap.erase(orderPtr->id);
-  priceLevel.deleteOrder(orderPtr,allocator);
+  // capture the id before deleteOrder recycles the node
+  OrderId deletedId = orderPtr->id;
+  idMap.erase(deletedId);
+  priceLevel.deleteOrder(orderPtr, allocator);
 
   if (priceLevel.empty()) {
     levels.erase(levelIt);
   }
-  eventLog.emplace_back(MakeDeleteEvent(ts, orderPtr->id, OrderbookError::OK));
+  eventLog.emplace_back(MakeDeleteEvent(ts, deletedId, OrderbookError::OK));
   return OrderbookError::OK;
 }
 
@@ -337,7 +342,7 @@ template <typename T, typename Compare>
   auto [res, levelIt] = SearchPolicy::search(levels.begin(), levels.end(), orderPtr->price, comp);
 
   assert(res != SearchResult::notFound && "CRITICAL BUG: Price level not found");
-  PriceLevel &priceLevel = levelIt->second;
+  PriceLevel_Intrusive &priceLevel = levelIt->second;
 
   Volume volumeChange = newVolume - orderPtr->volume;
 

@@ -1,5 +1,29 @@
 # Low-Latency Order Matching Engine & Market Data Replay System (C++23)
 
+ITCH replay → matching engine → order book. Built to measure: each change is benchmarked before and after, negative results included. Full method, snapshots, and analysis in [optimization_log.md](docs/optimization_log.md).
+
+
+# Performance
+
+Single-stock ITCH replay, 121,556 messages per pass, 500 repetitions, `taskset -c 2,4`.
+
+| Implementation | Mean latency | Throughput |
+|----------------|--------------|------------|
+| Map | 40.6 ns | 24.61 M msgs/s |
+| Vector — LinearSearch | 37.4 ns | 26.79 M msgs/s |
+| Slab — LinearSearch | **26.2 ns** | **38.15 M msgs/s** |
+| Slab — BranchlessBinarySearch | 26.9 ns | 37.15 M msgs/s |
+
+Map → Slab LinearSearch: **-35.5% latency, +55.0% throughput**.
+
+
+| Change | Δ latency | Δ throughput |
+|--------|-----------|--------------|
+| Price levels: `std::map` → sorted `std::vector` | -7.9% | +8.9% |
+| Order storage: `std::list` → slab intrusive nodes | -29.9% | +42.4% |
+
+
+# Components
 
 **Feed Handler**
 [feed_handler.h](include/feed_handler.h) / [feed_handler.md](docs/feed_handler.md)

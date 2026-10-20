@@ -1,8 +1,11 @@
+#include "orderbook_map.h"
+#include "orderbook_slab.h"
 #include "orderbook_vector.h"
 #include "search_policies.h"
-#include "types.h"
 #include <gtest/gtest.h>
 #include <optional>
+
+
 
 // Expected result for an order that rests on the book without matching.
 static void ExpectResting(const MatchResult &r, Volume volume) {
@@ -12,8 +15,11 @@ static void ExpectResting(const MatchResult &r, Volume volume) {
   EXPECT_EQ(r.restingVolume, volume);
 }
 
-TEST(Orderbook_Vector, Initalization) {
-  Orderbook_Vector<LinearSearch> ob;
+namespace {
+
+template <typename Orderbook>
+void testInit() {
+  Orderbook ob;
   EXPECT_EQ(ob.GetBestBid(), std::nullopt);
   EXPECT_EQ(ob.GetBestAsk(), std::nullopt);
   EXPECT_EQ(ob.GetTotalOrderCount(), 0);
@@ -23,8 +29,9 @@ TEST(Orderbook_Vector, Initalization) {
   EXPECT_EQ(ob.GetOrderCountAtPrice(100, Side::Ask), 0);
 }
 
-TEST(Orderbook_Vector, AddOrder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testAddOrder() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
 
   auto dup = ob.AddOrder(1, Side::Ask, 100, 10, 1);
@@ -46,8 +53,9 @@ TEST(Orderbook_Vector, AddOrder) {
   EXPECT_EQ(ob.GetOrderCountAtPrice(100, Side::Bid), 1);
 }
 
-TEST(Orderbook_Vector, AddOrderAggregatesAtSamePrice) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testAddOrderAggregatesAtSamePrice() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   ExpectResting(ob.AddOrder(2, Side::Bid, 100, 5, 2), 5);
   ExpectResting(ob.AddOrder(3, Side::Ask, 105, 7, 1), 7);
@@ -59,8 +67,9 @@ TEST(Orderbook_Vector, AddOrderAggregatesAtSamePrice) {
   EXPECT_EQ(ob.GetTotalOrderCount(), 3);
 }
 
-TEST(Orderbook_Vector, BestBidAndAskAcrossPrices) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testBestBidAndAskAcrossPrices() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   ExpectResting(ob.AddOrder(2, Side::Bid, 101, 10, 1), 10);
   ExpectResting(ob.AddOrder(3, Side::Bid, 99, 10, 1), 10);
@@ -72,8 +81,9 @@ TEST(Orderbook_Vector, BestBidAndAskAcrossPrices) {
   EXPECT_EQ(ob.GetBestAsk(), 103); // lowest ask
 }
 
-TEST(Orderbook_Vector, DeleteOrder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testDeleteOrder() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   ExpectResting(ob.AddOrder(2, Side::Bid, 100, 5, 2), 5);
 
@@ -88,8 +98,9 @@ TEST(Orderbook_Vector, DeleteOrder) {
   EXPECT_EQ(ob.DeleteOrder(999), OrderbookError::OrderNotFound);
 }
 
-TEST(Orderbook_Vector, DeleteLastOrderRemovesPriceLevel) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testDeleteLastOrderRemovesPriceLevel() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   ExpectResting(ob.AddOrder(2, Side::Bid, 101, 10, 1), 10);
   ExpectResting(ob.AddOrder(3, Side::Ask, 105, 10, 1), 10);
@@ -104,8 +115,9 @@ TEST(Orderbook_Vector, DeleteLastOrderRemovesPriceLevel) {
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(103, Side::Ask), 0);
 }
 
-TEST(Orderbook_Vector, ReAddAfterDelete) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testReAddAfterDelete() {
+  Orderbook ob;
   EXPECT_EQ(ob.DeleteOrder(1), OrderbookError::OrderNotFound);
   // id must be reusable after deletion
   ExpectResting(ob.AddOrder(1, Side::Ask, 105, 20, 2), 20);
@@ -117,8 +129,9 @@ TEST(Orderbook_Vector, ReAddAfterDelete) {
   EXPECT_EQ(order->volume, 20);
 }
 
-TEST(Orderbook_Vector, ModifyOrder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testModifyOrder() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
 
   EXPECT_EQ(ob.ModifyOrder(1, 4), OrderbookError::OK);
@@ -128,8 +141,9 @@ TEST(Orderbook_Vector, ModifyOrder) {
   EXPECT_EQ(ob.ModifyOrder(999, 5), OrderbookError::OrderNotFound);
 }
 
-TEST(Orderbook_Vector, ModifyOrderToZeroDeletes) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testModifyOrderToZeroDeletes() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   EXPECT_EQ(ob.ModifyOrder(1, 0), OrderbookError::OK);
   EXPECT_FALSE(ob.HasOrder(1));
@@ -137,8 +151,9 @@ TEST(Orderbook_Vector, ModifyOrderToZeroDeletes) {
   EXPECT_EQ(ob.GetBestBid(), std::nullopt);
 }
 
-TEST(Orderbook_Vector, ModifyOrderIncreaseRejected) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testModifyOrderIncreaseRejected() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 1), 10);
   // reduce-only modify: increasing volume is rejected, order unchanged
   EXPECT_EQ(ob.ModifyOrder(1, 25), OrderbookError::InvalidVolume);
@@ -151,8 +166,9 @@ TEST(Orderbook_Vector, ModifyOrderIncreaseRejected) {
 // HandleFill is exercised through AddOrder: a crossing incoming order
 // matches against resting orders on the opposite side.
 
-TEST(Orderbook_Vector, FillNoCrossingLiquidity) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillNoCrossingLiquidity() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 105, 10, 1), 10);
   // bid below best ask => no match, rests fully
   ExpectResting(ob.AddOrder(2, Side::Bid, 100, 8, 2), 8);
@@ -162,8 +178,9 @@ TEST(Orderbook_Vector, FillNoCrossingLiquidity) {
   EXPECT_EQ(ob.GetTotalOrderCount(), 2);
 }
 
-TEST(Orderbook_Vector, FillExactMatchBothRemoved) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillExactMatchBothRemoved() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 10, 1), 10);
   auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
   EXPECT_EQ(r.status, OrderStatus::Filled);
@@ -180,8 +197,9 @@ TEST(Orderbook_Vector, FillExactMatchBothRemoved) {
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(101, Side::Ask), 0);
 }
 
-TEST(Orderbook_Vector, FillIncomingPartiallyFilledRestsRemainder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillIncomingPartiallyFilledRestsRemainder() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 4, 1), 4);
 
   auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
@@ -198,8 +216,9 @@ TEST(Orderbook_Vector, FillIncomingPartiallyFilledRestsRemainder) {
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(101, Side::Bid), 6);
 }
 
-TEST(Orderbook_Vector, FillRestingPartiallyFilledRemainsResting) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillRestingPartiallyFilledRemainsResting() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 10, 1), 10);
 
   auto r = ob.AddOrder(2, Side::Bid, 101, 4, 2);
@@ -217,8 +236,9 @@ TEST(Orderbook_Vector, FillRestingPartiallyFilledRemainsResting) {
   EXPECT_EQ(ob.GetBestBid(), std::nullopt);
 }
 
-TEST(Orderbook_Vector, FillWalksMultiplePriceLevels) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillWalksMultiplePriceLevels() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 100, 5, 1), 5);
   ExpectResting(ob.AddOrder(2, Side::Ask, 101, 5, 1), 5);
 
@@ -236,8 +256,9 @@ TEST(Orderbook_Vector, FillWalksMultiplePriceLevels) {
   EXPECT_EQ(ob.GetBestAsk(), 101);
 }
 
-TEST(Orderbook_Vector, FillStopsAtPriceLimit) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillStopsAtPriceLimit() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 100, 5, 1), 5);
   ExpectResting(ob.AddOrder(2, Side::Ask, 103, 5, 1), 5);
 
@@ -255,8 +276,9 @@ TEST(Orderbook_Vector, FillStopsAtPriceLimit) {
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(101, Side::Bid), 3);
 }
 
-TEST(Orderbook_Vector, FillRespectsFifoWithinLevel) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillRespectsFifoWithinLevel() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 100, 5, 1), 5);
   ExpectResting(ob.AddOrder(2, Side::Ask, 100, 5, 2), 5);
 
@@ -272,8 +294,9 @@ TEST(Orderbook_Vector, FillRespectsFifoWithinLevel) {
   EXPECT_EQ(ob.GetOrderCountAtPrice(100, Side::Ask), 1);
 }
 
-TEST(Orderbook_Vector, FillSellSideMatchesBids) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillSellSideMatchesBids() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 5, 1), 5);
   ExpectResting(ob.AddOrder(2, Side::Bid, 99, 5, 1), 5);
 
@@ -292,8 +315,9 @@ TEST(Orderbook_Vector, FillSellSideMatchesBids) {
   EXPECT_EQ(ob.GetTotalVolumeAtPrice(99, Side::Bid), 2);
 }
 
-TEST(Orderbook_Vector, FillSellSideStopsAboveLimit) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testFillSellSideStopsAboveLimit() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 5, 1), 5);
   ExpectResting(ob.AddOrder(2, Side::Bid, 98, 5, 1), 5);
 
@@ -341,13 +365,15 @@ static void ExpectModifyEvent(const OrderEvent &e, OrderId id, Volume newVolume,
   EXPECT_EQ(e.orderbookError, error);
 }
 
-TEST(EventLog_Vector, EmptyOnFreshBook) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogEmptyOnFreshBook() {
+  Orderbook ob;
   EXPECT_TRUE(ob.GetEventLog().empty());
 }
 
-TEST(EventLog_Vector, RecordsRestingAdd) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsRestingAdd() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
 
   const auto &log = ob.GetEventLog();
@@ -356,8 +382,9 @@ TEST(EventLog_Vector, RecordsRestingAdd) {
   ExpectAddEvent(log[0], 1, Side::Bid, 100, 10, 7, 0, 10, OrderStatus::Resting);
 }
 
-TEST(EventLog_Vector, RecordsRejectedDuplicateAdd) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsRejectedDuplicateAdd() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
   auto dup = ob.AddOrder(1, Side::Ask, 101, 5, 8);
   ASSERT_EQ(dup.error, OrderbookError::DuplicateId);
@@ -367,8 +394,9 @@ TEST(EventLog_Vector, RecordsRejectedDuplicateAdd) {
   ExpectAddEvent(log[1], 1, Side::Ask, 101, 5, 8, 0, 5, OrderStatus::Rejected, OrderbookError::DuplicateId);
 }
 
-TEST(EventLog_Vector, RecordsFilledAdd) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsFilledAdd() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 10, 1), 10);
   auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
   ASSERT_EQ(r.status, OrderStatus::Filled);
@@ -378,8 +406,9 @@ TEST(EventLog_Vector, RecordsFilledAdd) {
   ExpectAddEvent(log[1], 2, Side::Bid, 101, 10, 2, 10, 0, OrderStatus::Filled);
 }
 
-TEST(EventLog_Vector, RecordsPartiallyFilledAdd) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsPartiallyFilledAdd() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Ask, 101, 4, 1), 4);
   auto r = ob.AddOrder(2, Side::Bid, 101, 10, 2);
   ASSERT_EQ(r.status, OrderStatus::PartiallyFilled);
@@ -390,8 +419,9 @@ TEST(EventLog_Vector, RecordsPartiallyFilledAdd) {
   ExpectAddEvent(log[1], 2, Side::Bid, 101, 10, 2, 4, 6, OrderStatus::PartiallyFilled);
 }
 
-TEST(EventLog_Vector, RecordsSuccessfulCancel) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsSuccessfulCancel() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
   ASSERT_EQ(ob.DeleteOrder(1), OrderbookError::OK);
 
@@ -400,8 +430,9 @@ TEST(EventLog_Vector, RecordsSuccessfulCancel) {
   ExpectCancelEvent(log[1], 1, OrderbookError::OK);
 }
 
-TEST(EventLog_Vector, RecordsCancelOfMissingOrder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsCancelOfMissingOrder() {
+  Orderbook ob;
   ASSERT_EQ(ob.DeleteOrder(42), OrderbookError::OrderNotFound);
 
   const auto &log = ob.GetEventLog();
@@ -409,8 +440,9 @@ TEST(EventLog_Vector, RecordsCancelOfMissingOrder) {
   ExpectCancelEvent(log[0], 42, OrderbookError::OrderNotFound);
 }
 
-TEST(EventLog_Vector, RecordsSuccessfulModify) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsSuccessfulModify() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
   ASSERT_EQ(ob.ModifyOrder(1, 4), OrderbookError::OK);
 
@@ -419,8 +451,9 @@ TEST(EventLog_Vector, RecordsSuccessfulModify) {
   ExpectModifyEvent(log[1], 1, 4, OrderbookError::OK);
 }
 
-TEST(EventLog_Vector, RecordsRejectedModify) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogRecordsRejectedModify() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
   ASSERT_EQ(ob.ModifyOrder(1, 25), OrderbookError::InvalidVolume);
 
@@ -429,8 +462,9 @@ TEST(EventLog_Vector, RecordsRejectedModify) {
   ExpectModifyEvent(log[1], 1, 25, OrderbookError::InvalidVolume);
 }
 
-TEST(EventLog_Vector, ModifyToZeroIsRecordedAsCancel) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogModifyToZeroIsRecordedAsCancel() {
+  Orderbook ob;
   ExpectResting(ob.AddOrder(1, Side::Bid, 100, 10, 7), 10);
   ASSERT_EQ(ob.ModifyOrder(1, 0), OrderbookError::OK);
 
@@ -440,8 +474,9 @@ TEST(EventLog_Vector, ModifyToZeroIsRecordedAsCancel) {
   ExpectCancelEvent(log[1], 1, OrderbookError::OK);
 }
 
-TEST(EventLog_Vector, PreservesOperationOrder) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogPreservesOperationOrder() {
+  Orderbook ob;
   ASSERT_EQ(ob.AddOrder(1, Side::Bid, 100, 10, 1).status, OrderStatus::Resting);
   ASSERT_EQ(ob.ModifyOrder(1, 5), OrderbookError::OK);
   ASSERT_EQ(ob.AddOrder(2, Side::Ask, 100, 5, 2).status, OrderStatus::Filled);
@@ -460,8 +495,9 @@ TEST(EventLog_Vector, PreservesOperationOrder) {
   EXPECT_EQ(log[3].orderId, 2);
 }
 
-TEST(EventLog_Vector, TimestampsAreMonotonic) {
-  Orderbook_Vector<LinearSearch>ob;
+template <typename Orderbook>
+void testEventLogTimestampsAreMonotonic() {
+  Orderbook ob;
   ASSERT_EQ(ob.AddOrder(1, Side::Bid, 100, 10, 1).status, OrderStatus::Resting);
   ASSERT_EQ(ob.AddOrder(2, Side::Bid, 99, 10, 1).status, OrderStatus::Resting);
   ASSERT_EQ(ob.ModifyOrder(1, 5), OrderbookError::OK);
@@ -475,3 +511,49 @@ TEST(EventLog_Vector, TimestampsAreMonotonic) {
     EXPECT_LE(log[i - 1].ts, log[i].ts);
   }
 }
+
+template <typename Orderbook>
+void testOrderbook() {
+  std::cerr << "RUN testInit\n";
+  testInit<Orderbook>();
+  std::cerr << "RUN testAddOrder\n";
+  testAddOrder<Orderbook>();
+  testAddOrderAggregatesAtSamePrice<Orderbook>();
+  testBestBidAndAskAcrossPrices<Orderbook>();
+  testDeleteOrder<Orderbook>();
+  testDeleteLastOrderRemovesPriceLevel<Orderbook>();
+  testReAddAfterDelete<Orderbook>();
+  testModifyOrder<Orderbook>();
+  testModifyOrderToZeroDeletes<Orderbook>();
+  testModifyOrderIncreaseRejected<Orderbook>();
+
+  testFillNoCrossingLiquidity<Orderbook>();
+  testFillExactMatchBothRemoved<Orderbook>();
+  testFillIncomingPartiallyFilledRestsRemainder<Orderbook>();
+  testFillRestingPartiallyFilledRemainsResting<Orderbook>();
+  testFillWalksMultiplePriceLevels<Orderbook>();
+  testFillStopsAtPriceLimit<Orderbook>();
+  testFillRespectsFifoWithinLevel<Orderbook>();
+  testFillSellSideMatchesBids<Orderbook>();
+  testFillSellSideStopsAboveLimit<Orderbook>();
+
+  testEventLogEmptyOnFreshBook<Orderbook>();
+  testEventLogRecordsRestingAdd<Orderbook>();
+  testEventLogRecordsRejectedDuplicateAdd<Orderbook>();
+  testEventLogRecordsFilledAdd<Orderbook>();
+  testEventLogRecordsPartiallyFilledAdd<Orderbook>();
+  testEventLogRecordsSuccessfulCancel<Orderbook>();
+  testEventLogRecordsCancelOfMissingOrder<Orderbook>();
+  testEventLogRecordsSuccessfulModify<Orderbook>();
+  testEventLogRecordsRejectedModify<Orderbook>();
+  testEventLogModifyToZeroIsRecordedAsCancel<Orderbook>();
+  testEventLogPreservesOperationOrder<Orderbook>();
+  testEventLogTimestampsAreMonotonic<Orderbook>();
+}
+
+} // namespace
+
+TEST(Orderbook_Vector, testOrderbook) { testOrderbook<Orderbook_Vector<LinearSearch>>(); }
+TEST(Orderbook_Map, testOrderbook) { testOrderbook<Orderbook_Map>(); }
+TEST(Orderbook_Slab, testOrderbook) { testOrderbook<Orderbook_Slab<LinearSearch, 10>>(); }
+

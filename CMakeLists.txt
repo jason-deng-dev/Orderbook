@@ -44,13 +44,12 @@ enable_testing()
 
 # add testing
 add_executable(orderbook_test
-  tests/orderbook_map_test.cc
+  tests/orderbook_test.cc
   tests/search_policies_test.cc
-  tests/orderbook_vector_test.cc
   tests/spsc_fifo_test.cc
   tests/feed_handler_test.cc
   tests/slab_allocator_test.cc
-  tests/orderbook_slab_test.cc
+  tests/pricelevel_intrusive_test.cc
 )
 
 target_link_libraries(orderbook_test PRIVATE

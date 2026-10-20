@@ -1,6 +1,6 @@
 # Low-Latency Order Matching Engine & Market Data Replay System (C++23)
 
-ITCH replay → matching engine → order book. Built to measure: each change is benchmarked before and after, negative results included. Full method, snapshots, and analysis in [optimization_log.md](docs/optimization_log.md).
+ITCH replay → SPSC FIFO → Matching Engine. Each optimization is benchmarked before and after. Full method, snapshots, and analysis in [optimization_log.md](docs/optimization_log.md).
 
 
 # Performance

@@ -692,3 +692,82 @@ Binary and Branchless are the largest movers, and both exceed the noise level of
 The perf counters do not corroborate a 2% per-item improvement: cycles and instructions are nearly unchanged (-1.54% and -0.22%) and IPC rises slightly, while task-clock and elapsed time rise by about a third because system time increased from 1.22 s to 4.28 s. 
 
 In conclusion I believe that in our hotpath which is dominated by emplace, tree traversal (in map implementation), and linear/binary/branchless search (in vector implementation), as well as other O(1) operations, our removal of a single O(1) operation from our hotpath is not able to meaningfully produce any delta.
+
+# Log 4: Slab allocator + Intrusive Order (git tag: v4-slab-intrusive-orderbook)
+## Snapshot
+```bash
+taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=1000 --benchmark_report_aggregates_only=true
+2026-10-20T09:49:46+08:00
+Running ./build/benchmarks
+Run on (16 X 4691.07 MHz CPU s)
+CPU Caches:
+  L1 Data 48 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 1024 KiB (x8)
+  L3 Unified 98304 KiB (x1)
+Load Average: 0.09, 0.04, 0.07
+-----------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                               Time             CPU   Iterations UserCounters...
+-----------------------------------------------------------------------------------------------------------------------------------------
+BM_Orderbook_Map_Throughput/iterations:121556_mean                                   78.1 ns         78.1 ns         1000 items_per_second=12.8094M/s
+BM_Orderbook_Map_Throughput/iterations:121556_median                                 78.0 ns         78.0 ns         1000 items_per_second=12.8274M/s
+BM_Orderbook_Map_Throughput/iterations:121556_stddev                                 1.88 ns         1.88 ns         1000 items_per_second=279.352k/s
+BM_Orderbook_Map_Throughput/iterations:121556_cv                                     2.41 %          2.41 %          1000 items_per_second=2.18%
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_mean                   74.4 ns         74.3 ns         1000 items_per_second=13.4575M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_median                 74.2 ns         74.2 ns         1000 items_per_second=13.4728M/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_stddev                 1.59 ns         1.17 ns         1000 items_per_second=193.966k/s
+BM_Orderbook_Vector_LinearSearch_Throughput/iterations:121556_cv                     2.13 %          1.58 %          1000 items_per_second=1.44%
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_mean                   76.6 ns         76.6 ns         1000 items_per_second=13.0617M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_median                 76.8 ns         76.8 ns         1000 items_per_second=13.0232M/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_stddev                 2.52 ns         2.52 ns         1000 items_per_second=311.706k/s
+BM_Orderbook_Vector_BinarySearch_Throughput/iterations:121556_cv                     3.29 %          3.28 %          1000 items_per_second=2.39%
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_mean         74.7 ns         74.7 ns         1000 items_per_second=13.3907M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_median       75.1 ns         75.1 ns         1000 items_per_second=13.3194M/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_stddev       1.41 ns         1.41 ns         1000 items_per_second=239.135k/s
+BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv           1.89 %          1.89 %          1000 items_per_second=1.79%
+BM_Orderbook_Slab_LinearSearch_Throughput/iterations:121556_mean                     63.5 ns         63.5 ns         1000 items_per_second=15.7392M/s
+BM_Orderbook_Slab_LinearSearch_Throughput/iterations:121556_median                   63.5 ns         63.5 ns         1000 items_per_second=15.7473M/s
+BM_Orderbook_Slab_LinearSearch_Throughput/iterations:121556_stddev                  0.569 ns        0.569 ns         1000 items_per_second=137.139k/s
+BM_Orderbook_Slab_LinearSearch_Throughput/iterations:121556_cv                       0.90 %          0.90 %          1000 items_per_second=0.87%
+BM_Orderbook_Slab_BinarySearch_Throughput/iterations:121556_mean                     65.3 ns         65.3 ns         1000 items_per_second=15.3074M/s
+BM_Orderbook_Slab_BinarySearch_Throughput/iterations:121556_median                   65.3 ns         65.3 ns         1000 items_per_second=15.3152M/s
+BM_Orderbook_Slab_BinarySearch_Throughput/iterations:121556_stddev                  0.585 ns        0.581 ns         1000 items_per_second=135.511k/s
+BM_Orderbook_Slab_BinarySearch_Throughput/iterations:121556_cv                       0.90 %          0.89 %          1000 items_per_second=0.89%
+BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_mean           62.9 ns         62.9 ns         1000 items_per_second=15.9066M/s
+BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_median         62.8 ns         62.8 ns         1000 items_per_second=15.9245M/s
+BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_stddev        0.657 ns        0.651 ns         1000 items_per_second=162.599k/s
+BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_cv             1.04 %          1.04 %          1000 items_per_second=1.02%
+```
+
+## Stat comparison
+
+### All implementations (1000 repetitions, 121556 iterations)
+
+| Benchmark | Mean latency | Median latency | Stddev | CV | Mean throughput |
+|-----------|--------------|----------------|--------|----|-----------------|
+| Map | 78.1 ns | 78.0 ns | 1.88 ns | 2.41% | 12.8094 M/s |
+| Vector — LinearSearch | 74.4 ns | 74.2 ns | 1.59 ns | 2.13% | 13.4575 M/s |
+| Vector — BinarySearch | 76.6 ns | 76.8 ns | 2.52 ns | 3.29% | 13.0617 M/s |
+| Vector — BranchlessBinarySearch | 74.7 ns | 75.1 ns | 1.41 ns | 1.89% | 13.3907 M/s |
+| Slab — LinearSearch | 63.5 ns | 63.5 ns | 0.569 ns | 0.90% | 15.7392 M/s |
+| Slab — BinarySearch | 65.3 ns | 65.3 ns | 0.585 ns | 0.90% | 15.3074 M/s |
+| **Slab — BranchlessBinarySearch** | **62.9 ns** | **62.8 ns** | 0.657 ns | 1.04% | **15.9066 M/s** |
+
+### Slab vs existing implementations
+
+Vector comparison is per search policy. Map has a single configuration (tree lookup), so it is compared against the fastest Slab variant.
+
+| Search policy | Vector latency | Slab latency | Δ latency | Vector throughput | Slab throughput | Δ throughput |
+|---------------|----------------|--------------|-----------|-------------------|-----------------|--------------|
+| LinearSearch | 74.4 ns | 63.5 ns | -14.7% | 13.4575 M/s | 15.7392 M/s | +17.0% |
+| BinarySearch | 76.6 ns | 65.3 ns | -14.8% | 13.0617 M/s | 15.3074 M/s | +17.2% |
+| BranchlessBinarySearch | 74.7 ns | 62.9 ns | -15.8% | 13.3907 M/s | 15.9066 M/s | +18.8% |
+| Map (reference, fastest Slab) | 78.1 ns | 62.9 ns | -19.5% | 12.8094 M/s | 15.9066 M/s | +24.2% |
+
+### Analysis
+
+Every Slab variant still beats every non-Slab implementation on both mean latency and throughput. Slab BranchlessBinarySearch is the fastest configuration overall at 62.9 ns mean (15.9066 M/s), 15.5% faster than the fastest non-Slab implementation (Vector LinearSearch, 74.4 ns) and 19.5% faster than Map.
+
+Within the Slab family, BranchlessBinarySearch (62.9 ns) now edges out LinearSearch (63.5 ns) by 0.6 ns, or 0.9%. This ordering is not stable across runs: the previous snapshot had LinearSearch ahead by 0.1 ns (63.2 vs 63.3), so the two remain effectively tied. BinarySearch is consistently the slowest Slab variant at 65.3 ns, 3.8% slower than Branchless and 2.8% slower than Linear.
+
+The Slab family is also the most stable this run: CVs are 0.90%, 0.90%, and 1.04%, versus 1.89-3.29% for the Vector variants and 2.41% for Map. The smallest Slab-vs-Vector gain (+17.0% throughput) is still more than five times the worst CV in the table (3.29%), so the improvement is not explained by run noise.

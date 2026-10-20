@@ -1,6 +1,8 @@
 #include "feed_handler.h"
 #include "orderbook_map.h"
+#include "orderbook_slab.h"
 #include "orderbook_vector.h"
+#include "search_policies.h"
 #include "types.h"
 #include <benchmark/benchmark.h>
 #include <utility>
@@ -57,9 +59,30 @@ static void BM_Orderbook_Vector_BranchlessBinarySearch_Throughput(benchmark::Sta
   RunOnePass(state, ob);
 }
 
+constexpr int SlabSize = 100;
+static void BM_Orderbook_Slab_LinearSearch_Throughput(benchmark::State &state) {
+  Orderbook_Slab<LinearSearch, SlabSize> ob;
+  RunOnePass(state, ob);
+}
+
+static void BM_Orderbook_Slab_BinarySearch_Throughput(benchmark::State &state) {
+  Orderbook_Slab<BinarySearch, SlabSize> ob;
+  RunOnePass(state, ob);
+}
+
+static void BM_Orderbook_Slab_BranchlessBinarySearch_Throughput(benchmark::State &state) {
+  Orderbook_Slab<BranchlessBinarySearch, SlabSize> ob;
+  RunOnePass(state, ob);
+}
+
+
+
+
 BENCHMARK(BM_Orderbook_Map_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_BinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_BranchlessBinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
-
+BENCHMARK(BM_Orderbook_Slab_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
+BENCHMARK(BM_Orderbook_Slab_BinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
+BENCHMARK(BM_Orderbook_Slab_BranchlessBinarySearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 

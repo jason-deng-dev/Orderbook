@@ -15,7 +15,11 @@ The feed handler parses the mmap'ed ITCH file and pushes `QueueItem` messages in
 
 # Performance
 
-Single-stock ITCH replay, 121,556 messages per pass, 500 repetitions, `taskset -c 2,4`.
+All runs use `taskset -c 2,4`, with producer and consumer pinned to separate physical cores. Full method, per-log snapshots, and analysis are in [optimization_log.md](docs/optimization_log.md).
+
+## Orderbook
+
+Single-stock ITCH replay, 121,556 messages per pass, 500 repetitions.
 
 | Implementation | Mean latency | Throughput |
 |----------------|--------------|------------|
@@ -26,12 +30,42 @@ Single-stock ITCH replay, 121,556 messages per pass, 500 repetitions, `taskset -
 
 Map → Slab LinearSearch: **-35.5% latency, +55.0% throughput**.
 
-
 | Change | Δ latency | Δ throughput |
 |--------|-----------|--------------|
 | Price levels: `std::map` → sorted `std::vector` | -7.9% | +8.9% |
 | Order storage: `std::list` → slab intrusive nodes | -29.9% | +42.4% |
 
+
+## Feed Handler
+
+50 repetitions. The handler parses the mmap'ed ITCH file in place, applies the optional stock-locate filter, and pushes `QueueItem` messages into the ring. No bytes of the ITCH file are copied into a user buffer.
+
+| Metric | Value |
+|--------|-------|
+| Throughput | 161.78 M msgs/s |
+| Mean latency | 6.20 ns |
+| Median latency | 6.13 ns |
+| Coefficient of variation | 6.17% |
+
+## SPSC FIFO
+
+10 repetitions per variant. `SpscFifo` is the baseline ring. `SpscFifo_Cached` keeps a cached version of the peer cursor, reloading it only when the ring reports full or empty.
+
+Saturated benchmark (consumer drains faster than producer fills, ring stays near empty):
+
+| Variant | Mean latency | Throughput | CV |
+|---------|--------------|------------|----|
+| `SpscFifo` | 2.95 ns | 339.99 M pairs/s | 3.83% |
+| `SpscFifo_Cached` | **0.928 ns** | **1.100 G pairs/s** | 13.41% |
+| Δ | **-68.5%** | **+223.6% (3.24x)** | |
+
+Slacked benchmark (ring pre-filled to half of 4,194,304 slots, stays away from both boundaries):
+
+| Variant | Mean latency | Median latency | Throughput |
+|---------|--------------|----------------|------------|
+| `SpscFifo` | 3.28 ns | 2.35 ns | 392.37 M pairs/s |
+| `SpscFifo_Cached` | 2.14 ns | **1.12 ns** | **814.53 M pairs/s** |
+| Δ | -34.8% | **-52.3%** | **+107.6%** |
 
 # Hardware
 
@@ -112,7 +146,7 @@ Benchmark specifics are located in [benchmark.md](docs/benchmark.md)
 ```bash
 cmake --preset default -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=500 --benchmark_report_aggregates_only=true
+taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=500 --benchmark_report_aggregates_only=true
 ```
 
 3 benchmarks implemented

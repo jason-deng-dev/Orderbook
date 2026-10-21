@@ -3,6 +3,16 @@
 ITCH replay → SPSC FIFO → Matching Engine. Each optimization is benchmarked before and after. Full method, snapshots, and analysis in [optimization_log.md](docs/optimization_log.md).
 
 
+# Architecture
+
+```mermaid
+flowchart LR
+    A["Feed Handler"] -->|"QueueItem"| B["SPSC FIFO"] -->|"QueueItem"| C["Orderbook"]
+```
+
+The feed handler parses the mmap'ed ITCH file and pushes `QueueItem` messages into the SPSC ring. The book builder thread pops them and drives the matching engine. The ring decouples the two threads: the parser can run ahead, and neither thread allocates on the handoff path. Details in [feed_handler.md](docs/feed_handler.md) and [spsc.md](docs/spsc.md).
+
+
 # Performance
 
 Single-stock ITCH replay, 121,556 messages per pass, 500 repetitions, `taskset -c 2,4`.
@@ -21,6 +31,24 @@ Map → Slab LinearSearch: **-35.5% latency, +55.0% throughput**.
 |--------|-----------|--------------|
 | Price levels: `std::map` → sorted `std::vector` | -7.9% | +8.9% |
 | Order storage: `std::list` → slab intrusive nodes | -29.9% | +42.4% |
+
+
+# Hardware
+
+All measurements above were taken on this machine. Because the build uses `-march=native`, the benchmark binaries and the numbers they produce are machine-specific.
+
+| Component | Detail |
+|-----------|--------|
+| CPU | AMD Ryzen 7 9800X3D (Zen 5), 8 cores / 16 threads, 96 MiB L3 |
+| Memory | 32 GiB |
+| OS | WSL2 guest on Windows, kernel `6.18.33.2-microsoft-standard-WSL2` |
+| Compiler | GCC 15.2.0, C++23 |
+| Flags | `-O3 -march=native -mtune=native`, LTO enabled for Release targets |
+| Thread pinning | `taskset -c 2,4`; producer pinned to CPU 2, consumer to CPU 4 via `pthread_setaffinity_np` |
+
+CPUs 2 and 4 are on separate physical cores (core 1 and core 2)
+
+Build and benchmark reproduction steps are in [benchmark.md](docs/benchmark.md).
 
 
 # Components

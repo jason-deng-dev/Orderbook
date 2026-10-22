@@ -30,7 +30,7 @@ class SpscFifo_Cached : private Alloc {
   static_assert(std::atomic<size_t>::is_always_lock_free);
 
 public:
-  explicit SpscFifo_Cached(size_t cap = 65536, Alloc const &alloc = Alloc{})
+  explicit SpscFifo_Cached(size_t cap = 131072, Alloc const &alloc = Alloc{})
       : Alloc(alloc), capacity_(checkedCapacity(cap)), ring_(Traits::allocate(*this, capacity_)) {}
 
   ~SpscFifo_Cached() {

@@ -1,3 +1,4 @@
+#include "bm_helper.h"
 #include "feed_handler.h"
 #include "orderbook_map.h"
 #include "orderbook_slab.h"
@@ -74,6 +75,7 @@ static void BM_Orderbook_Slab_BranchlessBinarySearch_Throughput(benchmark::State
   Orderbook_Slab<BranchlessBinarySearch, SlabSize> ob;
   RunOnePass(state, ob);
 }
+
 
 BENCHMARK(BM_Orderbook_Map_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));
 BENCHMARK(BM_Orderbook_Vector_LinearSearch_Throughput)->Iterations(static_cast<int64_t>(kMessageCount));

@@ -1,125 +1,168 @@
+#include "bm_helper.h"
 #include "spsc_fifo.h"
 #include "spsc_fifo_cached.h"
 #include "types.h"
+#include <atomic>
 #include <benchmark/benchmark.h>
-#include <cstddef>
 #include <cstdint>
-#include <pthread.h>
-#include <sched.h>
-#include <sched.h>
-#include <iostream>
-#include <cstdlib>
-
-
-// Helper function to pin the current thread to a specific CPU
-static void pinThread(int cpu) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) != 0) {
-        std::cerr << "Error: Failed to pin thread to CPU " << cpu << "\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
+#include <thread>
 
 constexpr int kProducerCpu = 2;
 constexpr int kConsumerCpu = 4;
+template <template <typename> class Fifo>
+void BM_Fifo(benchmark::State &state) {
+  constexpr size_t fifoSize = 131072;
+  Fifo<QueueItem> fifo(fifoSize);
 
+  std::atomic<bool> keepRunning{true};
+  std::int64_t consumed = 0;  
 
-
-SpscFifo<QueueItem> fifo{};
-  QueueItem payload{};
-
-static void BM_Fifo_Throughput(benchmark::State &state) {
-  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
-  QueueItem out{};
-
-  for (auto _ : state) {
-    if (state.thread_index() == 0) {
-      while (!fifo.push(payload))
-        ;
-    } else if (state.thread_index() == 1) {
-
-      while (!fifo.pop(out))
-        ;
-      benchmark::DoNotOptimize(out);
+  auto consumer = std::jthread([&] {
+    pinThread(kConsumerCpu);
+    QueueItem val;
+    for (;;) {
+      while (fifo.pop(val)) {
+        benchmark::DoNotOptimize(val);
+        ++consumed;
+      }
+      if (not keepRunning.load(std::memory_order_relaxed)) {
+        break;
+      }
     }
-  }
-  state.SetItemsProcessed(state.iterations() / 2);
-}
+  });
 
-SpscFifo_Cached<QueueItem> fifo_cached{};
+  pinThread(kProducerCpu);
 
-static void BM_Fifo_Cached_Throughput(benchmark::State &state) {
-  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
-  QueueItem out{};
+  std::int64_t produced = 0;
+  QueueItem value{};
   for (auto _ : state) {
-    if (state.thread_index() == 0) {
-      while (!fifo_cached.push(payload))
-        ;
-    } else if (state.thread_index() == 1) {
-
-      while (!fifo_cached.pop(out))
-        ;
-      benchmark::DoNotOptimize(out);
+    while (not fifo.push(value)) {
+      ;
     }
+    ++produced;
   }
-  state.SetItemsProcessed(state.iterations() / 2);
+
+  state.PauseTiming();
+  keepRunning.store(false, std::memory_order_relaxed);
+  consumer.join();
+
+  if (produced != consumed) {
+    state.SkipWithError("data loss: produced != consumed");
+    return;
+  }
+
+  state.counters["ops/sec"] = benchmark::Counter(double(produced), benchmark::Counter::kIsRate);
+  state.SetItemsProcessed(produced);
 }
 
-constexpr auto slackFifoCapacity = 4'194'304;
-SpscFifo_Cached<QueueItem> fifo_cached_slack{slackFifoCapacity};
-SpscFifo<QueueItem> fifo_slack{slackFifoCapacity};
+BENCHMARK_TEMPLATE(BM_Fifo, SpscFifo)->UseRealTime();
+BENCHMARK_TEMPLATE(BM_Fifo, SpscFifo_Cached)->UseRealTime();
 
-constexpr auto slack_target = slackFifoCapacity / 2;
+// template <typename Fifo>
+// static void RunOnePass(benchmark::State &state, Fifo &fifo) {
+//   std::atomic<bool> keep_running{true};
+//   std::atomic<int64_t> consumed_count{0};
 
-template <typename FIFO>
-static size_t SetupSlackedQueue(FIFO &fifo, size_t slackTarget) {
-  while (fifo.size() < slackTarget) {
-    fifo.push(payload);
-  }
-  return fifo.size();
-}
+//   std::jthread consumer([&]() {
+//     pinThread(kConsumerCpu);
 
-static const size_t cachedSlackSize = SetupSlackedQueue(fifo_cached_slack, slackFifoCapacity / 2);
-static const size_t baseSlackSize = SetupSlackedQueue(fifo_slack, slackFifoCapacity / 2);
+//     QueueItem out{};
 
-static void BM_Slacked_Fifo_Cached_Throughput(benchmark::State &state) {
-  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
-  QueueItem out{};
-  for (auto _ : state) {
-    if (state.thread_index() == 0) {
-      while (!fifo_cached_slack.push(payload))
-        ;
-    } else if (state.thread_index() == 1) {
+//     while (keep_running || !fifo.empty()) {
+//       while (fifo.pop(out)) {
+//         benchmark::DoNotOptimize(out);
+//         consumed_count.fetch_add(1, std::memory_order_relaxed);
+//       }
+//     }
+//   });
 
-      while (!fifo_cached_slack.pop(out))
-        ;
-      benchmark::DoNotOptimize(out);
-    }
-  }
-  state.SetItemsProcessed(state.iterations() / 2);
-}
+//   // producer runs on main benchmark thread
+//   pinThread(kProducerCpu);
+//   int64_t produced_count = 0;
 
-static void BM_Slacked_Fifo_Throughput(benchmark::State &state) {
-  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
-  QueueItem out{};
-  for (auto _ : state) {
-    if (state.thread_index() == 0) {
-      while (!fifo_slack.push(payload))
-        ;
-    } else if (state.thread_index() == 1) {
+//   for (auto _ : state) {
+//     QueueItem qItem{1, 1, 1, 1, OrderType::Add, Side::Bid};
+//     while (!fifo.push(qItem)) {
+//       benchmark::ClobberMemory();
+//     }
+//     produced_count++;
+//   }
 
-      while (!fifo_slack.pop(out))
-        ;
-      benchmark::DoNotOptimize(out);
-    }
-  }
-  state.SetItemsProcessed(state.iterations() / 2);
-}
+//   keep_running = false;
+//   consumer.join();
+//   if (produced_count != consumed_count.load()) {
+//     state.SkipWithError("Data loss: produced count != consumed count");
+//     return;
+//   }
+//   state.SetItemsProcessed(produced_count);
+// }
 
+// static void BM_Fifo_Throughput(benchmark::State &state) {
+//   SpscFifo<QueueItem> fifo(kQueueSize);
+//   RunOnePass(state, fifo);
+// }
 
-BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
-BENCHMARK(BM_Fifo_Cached_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
-BENCHMARK(BM_Slacked_Fifo_Throughput)->Threads(2)->Iterations(static_cast<int64_t>(baseSlackSize))->UseRealTime();
-BENCHMARK(BM_Slacked_Fifo_Cached_Throughput)->Threads(2)->Iterations(static_cast<int64_t>(cachedSlackSize))->UseRealTime();
+// static void BM_Fifo_Cached_Throughput(benchmark::State &state) {
+//   SpscFifo_Cached<QueueItem> fifo(kQueueSize);
+//   RunOnePass(state, fifo);
+// }
+
+// BENCHMARK(BM_Fifo_Throughput)->Iterations(100'000'000)->UseRealTime();
+// BENCHMARK(BM_Fifo_Cached_Throughput)->Iterations(100'000'000)->UseRealTime();
+
+// SpscFifo<QueueItem> fifo{};
+// QueueItem payload{};
+
+// static void BM_Fifo_Throughput_Prev(benchmark::State &state) {
+//   pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
+//   QueueItem out{};
+//   size_t successful_ops = 0;
+
+//   for (auto _ : state) {
+//     if (state.thread_index() == 0) {
+//       while (!fifo.push(payload))
+//         ;
+//       ++successful_ops;
+//     } else if (state.thread_index() == 1) {
+
+//       while (!fifo.pop(out))
+//         ;
+//       benchmark::DoNotOptimize(out);
+//       ++successful_ops;
+//     }
+//   }
+//   state.SetItemsProcessed(successful_ops);
+// }
+
+// SpscFifo_Cached<QueueItem> fifo_cached{};
+
+// static void BM_Fifo_Cached_Throughput_Prev(benchmark::State &state) {
+//   pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
+
+//   QueueItem out{};
+//   size_t push_ops = 0;
+//   size_t pop_ops = 0;
+
+//   for (auto _ : state) {
+//     if (state.thread_index() == 0) {
+//       while (!fifo_cached.push(payload)) {
+//       }
+//       ++push_ops;
+//     } else {
+//       while (!fifo_cached.pop(out)) {
+//       }
+//       benchmark::DoNotOptimize(out);
+//       ++pop_ops;
+//     }
+//   }
+
+//   if (push_ops != pop_ops) {
+//     state.SkipWithError("Data loss: produced count != consumed count");
+//     return;
+//   }
+
+//   state.SetItemsProcessed(push_ops);
+// }
+
+// BENCHMARK(BM_Fifo_Throughput_Prev)->Threads(2)->Iterations(100'000'000)->UseRealTime();
+// BENCHMARK(BM_Fifo_Cached_Throughput_Prev)->Threads(2)->Iterations(100'000'000)->UseRealTime();

@@ -1,4 +1,5 @@
 # benchmark setup
+
 ```bash
 cmake --preset default -DCMAKE_BUILD_TYPE=Release
 cmake --build build
@@ -8,6 +9,7 @@ taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=25 --benchmark_report_
 # Log 1 (git tag: v1-baseline)
 
 ## Full Suite (25 iterations)
+
 ```bash
 taskset -c 2,4 ./build/benchmarks --benchmark_repetitions=25 --benchmark_report_aggregates_only=true
 2026-10-18T11:46:56+08:00
@@ -56,20 +58,20 @@ The cached FIFO row in Log 1 was measured with bounded cursors that reset at cap
 
 ## Summary table
 
-|Benchmark|Throughput|mean|median|stddev|Coefficient of Variation|
-|---------|----------|----|------|------|------------------------|
-| BM_Fifo_Throughput | 410.29 M/s | 2.45 ns | 2.43 ns | 0.165 ns | 6.74% |
-| BM_Fifo_Cached_Throughput | 342.54 M/s | 3.04 ns | 2.92 ns | 0.651 ns | 21.45% |
-| BM_FeedHandler_Throughput | 165.91 M/s | 6.03 ns | 6.03 ns | 0.040 ns | 0.66% |
-| BM_Orderbook_Map_Throughput | 12.69 M/s | 80.8 ns | 78.0 ns | 10.1 ns | 12.51% |
-| BM_Orderbook_Vector_LinearSearch_Throughput | 13.70 M/s | 73.0 ns | 72.9 ns | 0.713 ns | 0.98% |
-| BM_Orderbook_Vector_BinarySearch_Throughput | 13.30 M/s | 75.2 ns | 75.1 ns | 0.279 ns | 0.37% |
-| BM_Orderbook_Vector_BranchlessBinarySearch_Throughput | 13.57 M/s | 73.7 ns | 73.7 ns | 0.406 ns | 0.55% |
+| Benchmark                                             | Throughput | mean    | median  | stddev   | Coefficient of Variation |
+| ----------------------------------------------------- | ---------- | ------- | ------- | -------- | ------------------------ |
+| BM_Fifo_Throughput                                    | 410.29 M/s | 2.45 ns | 2.43 ns | 0.165 ns | 6.74%                    |
+| BM_Fifo_Cached_Throughput                             | 342.54 M/s | 3.04 ns | 2.92 ns | 0.651 ns | 21.45%                   |
+| BM_FeedHandler_Throughput                             | 165.91 M/s | 6.03 ns | 6.03 ns | 0.040 ns | 0.66%                    |
+| BM_Orderbook_Map_Throughput                           | 12.69 M/s  | 80.8 ns | 78.0 ns | 10.1 ns  | 12.51%                   |
+| BM_Orderbook_Vector_LinearSearch_Throughput           | 13.70 M/s  | 73.0 ns | 72.9 ns | 0.713 ns | 0.98%                    |
+| BM_Orderbook_Vector_BinarySearch_Throughput           | 13.30 M/s  | 75.2 ns | 75.1 ns | 0.279 ns | 0.37%                    |
+| BM_Orderbook_Vector_BranchlessBinarySearch_Throughput | 13.57 M/s  | 73.7 ns | 73.7 ns | 0.406 ns | 0.55%                    |
 
 Throughput is the mean `items_per_second`
 
-
 ## Perf stat results
+
 ```bash
 taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock'   ./build/benchmarks   --benchmark_filter=BM_Fifo_Throughput   --benchmark_repetitions=10   --benchmark_report_aggregates_only=true
 2026-10-18T12:41:57+08:00
@@ -141,32 +143,34 @@ BM_Fifo_Cached_Throughput/iterations:100000000/real_time/threads:2_cv          1
 ```
 
 ## Perf stat comparison
-| Metric | Uncached | Cached | Change |
-|--------|----------|--------|--------|
-| mean latency | 2.45 ns | 3.04 ns | +24.1% |
-| median latency | 2.43 ns | 2.92 ns | +20.2% |
-| throughput | 410.29 M/s | 342.54 M/s | -16.5% |
-| coefficient of variation | 6.74% | 21.45% | 3.18x |
-| cycles | 34.78 G | 40.90 G | +17.6% |
-| instructions | 79.87 G | 85.24 G | +6.7% |
-| IPC | 2.30 | 2.08 | -9.3% |
-| branches | 16.61 G | 19.25 G | +15.9% |
-| branch misses | 14.15 M | 60.38 M | +326.7% |
-| branch miss rate | 0.0852% | 0.3137% | +0.2285 pp |
-| cache references | 3.84 G | 4.75 G | +23.7% |
-| cache misses | 585.94 M | 893.78 M | +52.5% |
-| cache miss rate | 15.27% | 18.84% | +3.57 pp |
-| task-clock | 6.72 s | 7.98 s | +18.7% |
-| instructions per item | 79.9 | 85.2 | +6.7% |
-| cycles per item | 34.8 | 40.9 | +17.6% |
-| branch misses per item | 0.0141 | 0.0604 | +326.7% |
-| cache misses per item | 0.586 | 0.894 | +52.5% |
+
+| Metric                   | Uncached   | Cached     | Change     |
+| ------------------------ | ---------- | ---------- | ---------- |
+| mean latency             | 2.45 ns    | 3.04 ns    | +24.1%     |
+| median latency           | 2.43 ns    | 2.92 ns    | +20.2%     |
+| throughput               | 410.29 M/s | 342.54 M/s | -16.5%     |
+| coefficient of variation | 6.74%      | 21.45%     | 3.18x      |
+| cycles                   | 34.78 G    | 40.90 G    | +17.6%     |
+| instructions             | 79.87 G    | 85.24 G    | +6.7%      |
+| IPC                      | 2.30       | 2.08       | -9.3%      |
+| branches                 | 16.61 G    | 19.25 G    | +15.9%     |
+| branch misses            | 14.15 M    | 60.38 M    | +326.7%    |
+| branch miss rate         | 0.0852%    | 0.3137%    | +0.2285 pp |
+| cache references         | 3.84 G     | 4.75 G     | +23.7%     |
+| cache misses             | 585.94 M   | 893.78 M   | +52.5%     |
+| cache miss rate          | 15.27%     | 18.84%     | +3.57 pp   |
+| task-clock               | 6.72 s     | 7.98 s     | +18.7%     |
+| instructions per item    | 79.9       | 85.2       | +6.7%      |
+| cycles per item          | 34.8       | 40.9       | +17.6%     |
+| branch misses per item   | 0.0141     | 0.0604     | +326.7%    |
+| cache misses per item    | 0.586      | 0.894      | +52.5%     |
 
 ## Analysis
 
 **Vector-Based Implementation Outperform `std::map`**
 
 All contiguous vector implementations achieved lower median latency (72.9 - 75.1 ns) compared to the `std::map` baseline (78.0 ns median).
+
 - Linear Search achieved 6.54% lower median latency
 - Binary Search achieved 3.72% lower median latency
 - Branchless Binary Search achieved 5.51% lower median latency
@@ -185,16 +189,19 @@ For our filtered, single-stock dataset, Linear Search (72.9 ns median) proved fa
 Since we filter the ITCH feed to a single liquid ticker, the number of active price levels (N) is small (typically < 100).
 
 Why Linear wins:
+
 - For small N, the CPU's branch predictor easily predicts the linear loop. Furthermore, since linear search accesses memory strictly sequentially, perfectly, we are able to perfectly saturate our L1 cache bandwidth and maximize hardware prefetching.
 
 Why Branchless beats Standard Binary:
-- Standard Binary Search relies on if/else branches to narrow the search space. On a small, unpredictable dataset, this causes branch mispredictions, which flushes CPU pipeline (~15-20 cycle penalty). 
-- Branchless binary search replaces these branches with conditional moves, `first += comp(first[half].first, price) * (length - half);` eliminating the misprediction penalty and making it faster than standard binary. 
+
+- Standard Binary Search relies on if/else branches to narrow the search space. On a small, unpredictable dataset, this causes branch mispredictions, which flushes CPU pipeline (~15-20 cycle penalty).
+- Branchless binary search replaces these branches with conditional moves, `first += comp(first[half].first, price) * (length - half);` eliminating the misprediction penalty and making it faster than standard binary.
 
 However both binary approaches still suffer from random memory acces jumps, which breaks hardware prefetching, keeping them strictly slower than the seqeuntial scan of Linear Search.
 
 **Cached FIFO performed worse than baseline FIFO**
 Under saturated throughput benchmarking, the cached implementation performed worse than the baseline:
+
 - 3.04 ns mean latency (2.92 ns median) for the cached Fifo versus 2.45 ns mean (2.43 ns median) for the uncached FIFO
 - Throughput drops from 410.29 M/s for uncached implementation to 342.54 M/s for cached implementation dropping 16.5%
 - CV increased from 6.74% for uncached implementation to 21.45% for cached implementation
@@ -206,28 +213,34 @@ Result: the cached version was 24.1% slower (3.04 vs 2.45 ns mean) with 3.18x hi
 **Cached Fifo : Branch misses increased by 326% (14.1M → 60.3M).**
 In a saturated spin as in our benchmark, the consumer drains the queue faster than the producer fills it, keeping occupancy near 0%.
 The cached implementation if check:
+
 ```c++
 if (empty(cachedPushCursor_, popCursor)) { // Branch A
   cachedPushCursor_ = pushCursor_.load(std::memory_order::acquire);
   if (empty(cachedPushCursor_, popCursor)) return false; // Branch B
 }
 ```
+
 Because the queue is almost always empty, the CPU branch predictor learns to predict Branch B as "taken". The exact moment the producer pushes an Item, Branch B evaluates to "not taken", guaranteeing a branch misprediction and a ~15-cycle pipeline flush. The uncached version lacks this nested check
+
 ```c++
 if (full(pushCursor, popCursor)) {
   return false;
 }
 ```
+
 resulting in much lower misprediciton rate.
 
 **Cached Fifo : Cache misses increased by 52% (585M → 893M).**
 I believe this is caused by the logical flow of the "slow path". When the queue is empty which is most of the time in this benchmark, the cached version simply does more memory operation than the baseline
+
 - Baseline: loads the atomic `pushCursor_` (1 memory read)
-- Cached version: Loads class member `cachedPushCursor_ (1 memory read), sees it's stale, loads the atomic pushCursor_ (1 memory read) and writes the new value back to cachedPushCursor_ (1 memory write)
+- Cached version: Loads class member `cachedPushCursor* (1 memory read), sees it's stale, loads the atomic pushCursor* (1 memory read) and writes the new value back to cachedPushCursor\_ (1 memory write)
 
 Because the queue is always empty, the cache is always stale. As a result the cached implementation pays the penalty of extra memory reads and writes on every single iteration, without ever reaping the reward of the fast path. More memory operations directly result in more cache misses
 
 ## Hypothesis
+
 **Creating a slacked benchmark environment**
 
 The cached implementation's advantage only appears when the queue sits away from both boundaries. In the current saturated benchmark, the consumer drains faster than the producer fills, so occupancy stays near zero. That forces the consumer's cached push cursor to be stale on every pop: it takes the slow path, reloads the producer's cursor with acquire, updates the cached copy, and retries. The producer almost never takes its slow path because the queue is never full. The benchmark therefore measures the cached consumer's slow-path cost without exercising the fast path that caching is meant to enable.
@@ -253,17 +266,22 @@ I believe that if we offload the logging to a dedicated thread via a lock-free S
 # Log 2: Monotonic cached FIFO (git tag: v2-fifo-monotonic)
 
 ## Changes
+
 **Add explicit CPU pinning inside of benchmark**
 In addition to using taskset -c 2,4 we must pin consumer/producer threads inside of SPSC Fifo benchmarks via `pthread_setaffinity_np()`, to ensure that our consumer/producer threads pin to different CPUs
 
 **Removed the cursor reset**
+
 - Cursors stay monotonic. `cursor & (capacity - 1)` handles slot wrap.
 
 resulting in simpler popCursor update
+
 ```c
 popCursor_.store(popCursor + 1, std::memory_order_release);
 ```
+
 instead of the previous if/else loop to handle wrap around
+
 ```c
 if (popCursor == capacity_) {
   popCursor_.store(0, std::memory_order_release);
@@ -273,12 +291,15 @@ if (popCursor == capacity_) {
 ```
 
 **Added Slacked SPSC Fifo benchmark**
+
 - We first choose a large slackFifoCapacity = 4,194,304
 - and then fill the SPSC Fifo up to slackCapacity/2
 - and we run out benchmark based on the initial slack size
 
 This is to ensure that every iteration of our SPSC Fifo will be operating in the scenerio where it is not empty.
+
 ## Full suite (50 repetitions)
+
 ```bash
  taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Fifo*  --benchmark_repetitions=50 --benchmark_report_aggregates_only=true
 2026-10-18T16:50:38+08:00
@@ -310,21 +331,25 @@ BM_Slacked_Fifo_Cached_Throughput/iterations:2097152/real_time/threads:2_median 
 BM_Slacked_Fifo_Cached_Throughput/iterations:2097152/real_time/threads:2_stddev       1.44 ns         1.44 ns           50 items_per_second=147.669M/s
 BM_Slacked_Fifo_Cached_Throughput/iterations:2097152/real_time/threads:2_cv         110.61 %        110.71 %            50 items_per_second=16.27%
 ```
+
 ## Benchmark Summary Table
-|Benchmark|Throughput|mean|median|stddev|Coefficient of Variation|
-|---------|----------|----|------|------|------------------------|
-| BM_Fifo_Throughput | 306.00 M/s | 3.32 ns | 3.41 ns | 0.412 ns | 12.41% |
-| BM_Fifo_Cached_Throughput | 1.207 G/s | 0.851 ns | 0.827 ns | 0.147 ns | 17.32% |
-| BM_FeedHandler_Throughput | 161.78 M/s | 6.20 ns | 6.13 ns | 0.383 ns | 6.17% |
-| BM_Orderbook_Map_Throughput | 12.54 M/s | 79.8 ns | 79.7 ns | 0.512 ns | 0.64% |
-| BM_Orderbook_Vector_LinearSearch_Throughput | 13.47 M/s | 76.2 ns | 74.2 ns | 10.0 ns | 13.17% |
-| BM_Orderbook_Vector_BinarySearch_Throughput | 13.09 M/s | 76.4 ns | 76.3 ns | 0.536 ns | 0.70% |
-| BM_Orderbook_Vector_BranchlessBinarySearch_Throughput | 13.30 M/s | 75.2 ns | 75.2 ns | 0.338 ns | 0.45% |
-| BM_Slacked_Fifo_Throughput | 397.82 M/s | 2.65 ns | 2.47 ns | 1.21 ns | 45.59% |
-| BM_Slacked_Fifo_Cached_Throughput | 907.36 M/s | 1.30 ns | 1.06 ns | 1.44 ns | 110.61% |
+
+| Benchmark                                             | Throughput | mean     | median   | stddev   | Coefficient of Variation |
+| ----------------------------------------------------- | ---------- | -------- | -------- | -------- | ------------------------ |
+| BM_Fifo_Throughput                                    | 306.00 M/s | 3.32 ns  | 3.41 ns  | 0.412 ns | 12.41%                   |
+| BM_Fifo_Cached_Throughput                             | 1.207 G/s  | 0.851 ns | 0.827 ns | 0.147 ns | 17.32%                   |
+| BM_FeedHandler_Throughput                             | 161.78 M/s | 6.20 ns  | 6.13 ns  | 0.383 ns | 6.17%                    |
+| BM_Orderbook_Map_Throughput                           | 12.54 M/s  | 79.8 ns  | 79.7 ns  | 0.512 ns | 0.64%                    |
+| BM_Orderbook_Vector_LinearSearch_Throughput           | 13.47 M/s  | 76.2 ns  | 74.2 ns  | 10.0 ns  | 13.17%                   |
+| BM_Orderbook_Vector_BinarySearch_Throughput           | 13.09 M/s  | 76.4 ns  | 76.3 ns  | 0.536 ns | 0.70%                    |
+| BM_Orderbook_Vector_BranchlessBinarySearch_Throughput | 13.30 M/s  | 75.2 ns  | 75.2 ns  | 0.338 ns | 0.45%                    |
+| BM_Slacked_Fifo_Throughput                            | 397.82 M/s | 2.65 ns  | 2.47 ns  | 1.21 ns  | 45.59%                   |
+| BM_Slacked_Fifo_Cached_Throughput                     | 907.36 M/s | 1.30 ns  | 1.06 ns  | 1.44 ns  | 110.61%                  |
 
 Throughput is the mean `items_per_second`
+
 ## Perf stat results
+
 ```bash
 taskset -c 2,4 perf stat -e cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock   ./build/benchmarks --benchmark_filter='BM_Fifo_Throughput'   --benchmark_repetitions=10 --benchmark_report_aggregates_only=true
 2026-10-18T19:58:05+08:00
@@ -471,47 +496,51 @@ BM_Slacked_Fifo_Cached_Throughput/iterations:2097152/real_time/threads:2_cv     
        2.424343000 seconds user
        0.236423000 seconds sys
 ```
+
 ## Perf Stat comparison
 
 Saturated pair:
 
-| Metric | Uncached | Cached | Change |
-|--------|----------|--------|--------|
-| mean latency | 2.95 ns | 0.928 ns | -68.5% |
-| median latency | 2.92 ns | 0.962 ns | -67.1% |
-| throughput | 339.99 M/s | 1.100 G/s | +223.6% |
-| coefficient of variation | 3.83% | 13.41% | +9.58 pp |
-| cycles | 42.14 G | 20.30 G | -51.8% |
-| instructions | 72.03 G | 68.31 G | -5.2% |
-| IPC | 1.71 | 3.37 | +96.9% |
-| branches | 14.69 G | 14.81 G | +0.8% |
-| branch misses | 24.06 M | 20.46 M | -15.0% |
-| branch miss rate | 0.1638% | 0.1382% | -0.0257 pp |
-| cache references | 3.92 G | 3.50 G | -10.7% |
-| cache misses | 556.18 M | 265.19 M | -52.3% |
-| cache miss rate | 14.17% | 7.57% | -6.60 pp |
-| task-clock | 8.64 s | 4.48 s | -48.2% |
+| Metric                   | Uncached   | Cached    | Change     |
+| ------------------------ | ---------- | --------- | ---------- |
+| mean latency             | 2.95 ns    | 0.928 ns  | -68.5%     |
+| median latency           | 2.92 ns    | 0.962 ns  | -67.1%     |
+| throughput               | 339.99 M/s | 1.100 G/s | +223.6%    |
+| coefficient of variation | 3.83%      | 13.41%    | +9.58 pp   |
+| cycles                   | 42.14 G    | 20.30 G   | -51.8%     |
+| instructions             | 72.03 G    | 68.31 G   | -5.2%      |
+| IPC                      | 1.71       | 3.37      | +96.9%     |
+| branches                 | 14.69 G    | 14.81 G   | +0.8%      |
+| branch misses            | 24.06 M    | 20.46 M   | -15.0%     |
+| branch miss rate         | 0.1638%    | 0.1382%   | -0.0257 pp |
+| cache references         | 3.92 G     | 3.50 G    | -10.7%     |
+| cache misses             | 556.18 M   | 265.19 M  | -52.3%     |
+| cache miss rate          | 14.17%     | 7.57%     | -6.60 pp   |
+| task-clock               | 8.64 s     | 4.48 s    | -48.2%     |
 
 Slacked pair, Log 2 only:
 
-| Metric | Slacked uncached | Slacked cached | Change |
-|--------|------------------|----------------|--------|
-| mean latency | 3.28 ns | 2.14 ns | -34.8% |
-| median latency | 2.35 ns | 1.12 ns | -52.3% |
-| throughput | 392.37 M/s | 814.53 M/s | +107.6% |
-| coefficient of variation | 90.14% | 149.19% | +59.05 pp |
-| cycles | 11.27 G | 11.08 G | -1.7% |
-| instructions | 27.64 G | 27.56 G | -0.3% |
-| IPC | 2.45 | 2.49 | +1.4% |
-| branches | 6.53 G | 6.53 G | ~0.0% |
-| branch misses | 15.69 M | 16.02 M | +2.1% |
-| branch miss rate | 0.2404% | 0.2455% | +0.0050 pp |
-| cache references | 1.18 G | 1.19 G | +0.1% |
-| cache misses | 11.77 M | 7.97 M | -32.3% |
-| cache miss rate | 0.994% | 0.672% | -0.322 pp |
-| task-clock | 2.66 s | 2.66 s | +0.2% |
+| Metric                   | Slacked uncached | Slacked cached | Change     |
+| ------------------------ | ---------------- | -------------- | ---------- |
+| mean latency             | 3.28 ns          | 2.14 ns        | -34.8%     |
+| median latency           | 2.35 ns          | 1.12 ns        | -52.3%     |
+| throughput               | 392.37 M/s       | 814.53 M/s     | +107.6%    |
+| coefficient of variation | 90.14%           | 149.19%        | +59.05 pp  |
+| cycles                   | 11.27 G          | 11.08 G        | -1.7%      |
+| instructions             | 27.64 G          | 27.56 G        | -0.3%      |
+| IPC                      | 2.45             | 2.49           | +1.4%      |
+| branches                 | 6.53 G           | 6.53 G         | ~0.0%      |
+| branch misses            | 15.69 M          | 16.02 M        | +2.1%      |
+| branch miss rate         | 0.2404%          | 0.2455%        | +0.0050 pp |
+| cache references         | 1.18 G           | 1.19 G         | +0.1%      |
+| cache misses             | 11.77 M          | 7.97 M         | -32.3%     |
+| cache miss rate          | 0.994%           | 0.672%         | -0.322 pp  |
+| task-clock               | 2.66 s           | 2.66 s         | +0.2%      |
+
 ## Analysis
+
 In a saturated benchmark run, the cached queue processes teh same instruction volume with roughly half the cycles:
+
 - Instructions: 72.03 G vs 68.31 G, -5.2%.
 - Cycles: 42.14 G vs 20.30 G, -51.8%.
 - IPC: 1.71 vs 3.37, +96.9%.
@@ -525,14 +554,15 @@ Against Log 1's reset implementation, cached mean latency fell from 3.01 ns to 0
 
 Log 1's branch-misprediction explanation was based on the broken reset implementation, so it is not the explanation for this result. Run-to-run variance remains high (cached CV 13.41%), so repeated runs and medians are required before quoting a speedup.
 
-
 # Log 3: Remove total_volume from PriceLevel (git tag: v3-price-level-refactor)
 
 ## Changes
+
 Remove total_volume from PriceLevel
 Remove the bookkeeping of the variable from Orderbook_Map and Orderbook_Vector Implemenations
 
 ## Hypothesis
+
 ```c++
 HandleFill(){
   priceLevel.total_volume -= matchQty;
@@ -548,9 +578,11 @@ ModifyOrder() {
   priceLevel.total_volume += volumeChange;
 }
 ```
+
 I believe that by removing total_volume from PriceLevel, and by removing the bookkeeping from Add/Modify/Delete orders, as well as from HandleFill, that we will see a slight and noticable increase in throughput thanks to the decreased overhead from having to update total volume.
 
 ## Snapshot before change
+
 ```bash
 taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true
 2026-10-19T14:48:32+08:00
@@ -584,13 +616,13 @@ BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv      
 
  Performance counter stats for './build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true':
 
-       32604097722      cycles                                                                
-       58935751355      instructions                                                          
-          62500335      cache-misses                                                          
-        1578835982      cache-references                                                      
-         260056155      branch-misses                                                         
-       12528626113      branches                                                              
-           6780.53 msec task-clock                                                            
+       32604097722      cycles
+       58935751355      instructions
+          62500335      cache-misses
+        1578835982      cache-references
+         260056155      branch-misses
+       12528626113      branches
+           6780.53 msec task-clock
 
        6.787662535 seconds time elapsed
 
@@ -599,6 +631,7 @@ BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv      
 ```
 
 ## Snapshot after change
+
 ```bash
 taskset -c 2,4 perf stat -e 'cycles,instructions,cache-misses,cache-references,branch-misses,branches,task-clock' ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true
 2026-10-19T17:06:45+08:00
@@ -632,13 +665,13 @@ BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv      
 
  Performance counter stats for './build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=100 --benchmark_report_aggregates_only=true':
 
-       32102554507      cycles                                                                
-       58803641676      instructions                                                          
-          95033949      cache-misses                                                          
-        1905246759      cache-references                                                      
-         262368441      branch-misses                                                         
-       12586637248      branches                                                              
-           9004.98 msec task-clock                                                            
+       32102554507      cycles
+       58803641676      instructions
+          95033949      cache-misses
+        1905246759      cache-references
+         262368441      branch-misses
+       12586637248      branches
+           9004.98 msec task-clock
 
        9.063867765 seconds time elapsed
 
@@ -646,55 +679,47 @@ BM_Orderbook_Vector_BranchlessBinarySearch_Throughput/iterations:121556_cv      
        4.279694000 seconds sys
 ```
 
-
-
-
-
-
-
-
-
-
-
-
 ## Stat comparison
 
 ### Per-benchmark results (100 repetitions)
 
-| Benchmark | Mean latency (before → after) | Δ | Median latency (before → after) | Δ | Mean throughput (before → after) | Δ |
-|-----------|-------------------------------|---|-------------------------------|------|----------------------------------|---|
-| BM_Orderbook_Map | 77.7 → 77.5 ns | -0.26% | 77.6 → 77.0 ns | -0.77% | 12.879 → 12.931 M/s | +0.40% |
-| BM_Orderbook_Vector_LinearSearch | 74.1 → 73.2 ns | -1.22% | 73.7 → 73.3 ns | -0.54% | 13.514 → 13.674 M/s | +1.18% |
-| BM_Orderbook_Vector_BinarySearch | 77.1 → 75.3 ns | -2.34% | 76.8 → 75.3 ns | -1.95% | 12.984 → 13.274 M/s | +2.24% |
-| BM_Orderbook_Vector_BranchlessBinarySearch | 74.7 → 73.1 ns | -2.14% | 74.6 → 73.2 ns | -1.88% | 13.396 → 13.682 M/s | +2.14% |
+| Benchmark                                  | Mean latency (before → after) | Δ      | Median latency (before → after) | Δ      | Mean throughput (before → after) | Δ      |
+| ------------------------------------------ | ----------------------------- | ------ | ------------------------------- | ------ | -------------------------------- | ------ |
+| BM_Orderbook_Map                           | 77.7 → 77.5 ns                | -0.26% | 77.6 → 77.0 ns                  | -0.77% | 12.879 → 12.931 M/s              | +0.40% |
+| BM_Orderbook_Vector_LinearSearch           | 74.1 → 73.2 ns                | -1.22% | 73.7 → 73.3 ns                  | -0.54% | 13.514 → 13.674 M/s              | +1.18% |
+| BM_Orderbook_Vector_BinarySearch           | 77.1 → 75.3 ns                | -2.34% | 76.8 → 75.3 ns                  | -1.95% | 12.984 → 13.274 M/s              | +2.24% |
+| BM_Orderbook_Vector_BranchlessBinarySearch | 74.7 → 73.1 ns                | -2.14% | 74.6 → 73.2 ns                  | -1.88% | 13.396 → 13.682 M/s              | +2.14% |
 
 ### Perf stat comparison
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| cycles | 32.60 G | 32.10 G | -1.54% |
-| instructions | 58.94 G | 58.80 G | -0.22% |
-| IPC | 1.81 | 1.83 | +1.34% |
-| branches | 12.53 G | 12.59 G | +0.46% |
-| branch misses | 260.06 M | 262.37 M | +0.89% |
-| branch miss rate | 2.0757% | 2.0845% | +0.0088 pp |
-| cache references | 1.579 G | 1.905 G | +20.67% |
-| cache misses | 62.50 M | 95.03 M | +52.05% |
-| cache miss rate | 3.9586% | 4.9880% | +1.0294 pp |
-| task-clock | 6780.53 ms | 9004.98 ms | +32.81% |
-| time elapsed | 6.79 s | 9.06 s | +33.53% |
+| Metric           | Before     | After      | Change     |
+| ---------------- | ---------- | ---------- | ---------- |
+| cycles           | 32.60 G    | 32.10 G    | -1.54%     |
+| instructions     | 58.94 G    | 58.80 G    | -0.22%     |
+| IPC              | 1.81       | 1.83       | +1.34%     |
+| branches         | 12.53 G    | 12.59 G    | +0.46%     |
+| branch misses    | 260.06 M   | 262.37 M   | +0.89%     |
+| branch miss rate | 2.0757%    | 2.0845%    | +0.0088 pp |
+| cache references | 1.579 G    | 1.905 G    | +20.67%    |
+| cache misses     | 62.50 M    | 95.03 M    | +52.05%    |
+| cache miss rate  | 3.9586%    | 4.9880%    | +1.0294 pp |
+| task-clock       | 6780.53 ms | 9004.98 ms | +32.81%    |
+| time elapsed     | 6.79 s     | 9.06 s     | +33.53%    |
 
 ## Analysis
+
 We observe decreases in mean and median latency across all implementations. Map is effectively flat (-0.26% mean, -0.77% median). The vector implementations improve: Linear Search -1.22% mean / -0.54% median, Binary Search -2.34% / -1.95%, and Branchless Binary Search -2.14% / -1.88%.
 
 Binary and Branchless are the largest movers, and both exceed the noise level of this run (after-change CV 0.72% and 0.81%). Linear Search's mean gain is larger than its median gain, so part of that delta may be outlier-driven. Map shows no meaningful change.
 
-The perf counters do not corroborate a 2% per-item improvement: cycles and instructions are nearly unchanged (-1.54% and -0.22%) and IPC rises slightly, while task-clock and elapsed time rise by about a third because system time increased from 1.22 s to 4.28 s. 
+The perf counters do not corroborate a 2% per-item improvement: cycles and instructions are nearly unchanged (-1.54% and -0.22%) and IPC rises slightly, while task-clock and elapsed time rise by about a third because system time increased from 1.22 s to 4.28 s.
 
 In conclusion I believe that in our hotpath which is dominated by emplace, tree traversal (in map implementation), and linear/binary/branchless search (in vector implementation), as well as other O(1) operations, our removal of a single O(1) operation from our hotpath is not able to meaningfully produce any delta.
 
 # Log 4: Slab allocator + Intrusive Order (git tag: v4-slab-intrusive-orderbook)
+
 ## Snapshot
+
 ```bash
 taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=1000 --benchmark_report_aggregates_only=true
 2026-10-20T09:49:46+08:00
@@ -743,26 +768,26 @@ BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_cv        
 
 ### All implementations (1000 repetitions, 121556 iterations)
 
-| Benchmark | Mean latency | Median latency | Stddev | CV | Mean throughput |
-|-----------|--------------|----------------|--------|----|-----------------|
-| Map | 78.1 ns | 78.0 ns | 1.88 ns | 2.41% | 12.8094 M/s |
-| Vector — LinearSearch | 74.4 ns | 74.2 ns | 1.59 ns | 2.13% | 13.4575 M/s |
-| Vector — BinarySearch | 76.6 ns | 76.8 ns | 2.52 ns | 3.29% | 13.0617 M/s |
-| Vector — BranchlessBinarySearch | 74.7 ns | 75.1 ns | 1.41 ns | 1.89% | 13.3907 M/s |
-| Slab — LinearSearch | 63.5 ns | 63.5 ns | 0.569 ns | 0.90% | 15.7392 M/s |
-| Slab — BinarySearch | 65.3 ns | 65.3 ns | 0.585 ns | 0.90% | 15.3074 M/s |
-| **Slab — BranchlessBinarySearch** | **62.9 ns** | **62.8 ns** | 0.657 ns | 1.04% | **15.9066 M/s** |
+| Benchmark                         | Mean latency | Median latency | Stddev   | CV    | Mean throughput |
+| --------------------------------- | ------------ | -------------- | -------- | ----- | --------------- |
+| Map                               | 78.1 ns      | 78.0 ns        | 1.88 ns  | 2.41% | 12.8094 M/s     |
+| Vector — LinearSearch             | 74.4 ns      | 74.2 ns        | 1.59 ns  | 2.13% | 13.4575 M/s     |
+| Vector — BinarySearch             | 76.6 ns      | 76.8 ns        | 2.52 ns  | 3.29% | 13.0617 M/s     |
+| Vector — BranchlessBinarySearch   | 74.7 ns      | 75.1 ns        | 1.41 ns  | 1.89% | 13.3907 M/s     |
+| Slab — LinearSearch               | 63.5 ns      | 63.5 ns        | 0.569 ns | 0.90% | 15.7392 M/s     |
+| Slab — BinarySearch               | 65.3 ns      | 65.3 ns        | 0.585 ns | 0.90% | 15.3074 M/s     |
+| **Slab — BranchlessBinarySearch** | **62.9 ns**  | **62.8 ns**    | 0.657 ns | 1.04% | **15.9066 M/s** |
 
 ### Slab vs existing implementations
 
 Vector comparison is per search policy. Map has a single configuration (tree lookup), so it is compared against the fastest Slab variant.
 
-| Search policy | Vector latency | Slab latency | Δ latency | Vector throughput | Slab throughput | Δ throughput |
-|---------------|----------------|--------------|-----------|-------------------|-----------------|--------------|
-| LinearSearch | 74.4 ns | 63.5 ns | -14.7% | 13.4575 M/s | 15.7392 M/s | +17.0% |
-| BinarySearch | 76.6 ns | 65.3 ns | -14.8% | 13.0617 M/s | 15.3074 M/s | +17.2% |
-| BranchlessBinarySearch | 74.7 ns | 62.9 ns | -15.8% | 13.3907 M/s | 15.9066 M/s | +18.8% |
-| Map (reference, fastest Slab) | 78.1 ns | 62.9 ns | -19.5% | 12.8094 M/s | 15.9066 M/s | +24.2% |
+| Search policy                 | Vector latency | Slab latency | Δ latency | Vector throughput | Slab throughput | Δ throughput |
+| ----------------------------- | -------------- | ------------ | --------- | ----------------- | --------------- | ------------ |
+| LinearSearch                  | 74.4 ns        | 63.5 ns      | -14.7%    | 13.4575 M/s       | 15.7392 M/s     | +17.0%       |
+| BinarySearch                  | 76.6 ns        | 65.3 ns      | -14.8%    | 13.0617 M/s       | 15.3074 M/s     | +17.2%       |
+| BranchlessBinarySearch        | 74.7 ns        | 62.9 ns      | -15.8%    | 13.3907 M/s       | 15.9066 M/s     | +18.8%       |
+| Map (reference, fastest Slab) | 78.1 ns        | 62.9 ns      | -19.5%    | 12.8094 M/s       | 15.9066 M/s     | +24.2%       |
 
 ### Analysis
 
@@ -773,10 +798,13 @@ Within the Slab family, BranchlessBinarySearch (62.9 ns) now edges out LinearSea
 The Slab family is also the most stable this run: CVs are 0.90%, 0.90%, and 1.04%, versus 1.89-3.29% for the Vector variants and 2.41% for Map. The smallest Slab-vs-Vector gain (+17.0% throughput) is still more than five times the worst CV in the table (3.29%), so the improvement is not explained by run noise.
 
 # Log 5: Remove Event Logging from hot path (git tag: v5-remove-logging-orderbook)
+
 ## Changes:
+
 removed Event Logging from Orderbook implementations
 
 ## Snapshot
+
 ```bash
 taskset -c 2,4 ./build/benchmarks --benchmark_filter=BM_Orderbook --benchmark_repetitions=500 --benchmark_report_aggregates_only=true
 ninja: no work to do.
@@ -824,15 +852,15 @@ BM_Orderbook_Slab_BranchlessBinarySearch_Throughput/iterations:121556_cv        
 
 ## Comparison Table
 
-| Benchmark | Mean latency | Median latency | Stddev | CV | Mean throughput |
-|-----------|--------------|----------------|--------|----|-----------------|
-| Map | 40.6 ns | 40.6 ns | 0.520 ns | 1.28% | 24.6081 M/s |
-| Vector — LinearSearch | 37.4 ns | 37.4 ns | 0.918 ns | 2.46% | 26.7853 M/s |
-| Vector — BinarySearch | 40.8 ns | 40.8 ns | 0.808 ns | 1.98% | 24.5172 M/s |
-| Vector — BranchlessBinarySearch | 36.8 ns | 36.8 ns | 0.749 ns | 2.03% | 27.1633 M/s |
-| **Slab — LinearSearch** | **26.2 ns** | **26.1 ns** | 0.522 ns | 1.99% | **38.1475 M/s** |
-| Slab — BinarySearch | 30.0 ns | 29.9 ns | 0.579 ns | 1.93% | 33.3805 M/s |
-| Slab — BranchlessBinarySearch | 26.9 ns | 26.8 ns | 0.588 ns | 2.18% | 37.1463 M/s |
+| Benchmark                       | Mean latency | Median latency | Stddev   | CV    | Mean throughput |
+| ------------------------------- | ------------ | -------------- | -------- | ----- | --------------- |
+| Map                             | 40.6 ns      | 40.6 ns        | 0.520 ns | 1.28% | 24.6081 M/s     |
+| Vector — LinearSearch           | 37.4 ns      | 37.4 ns        | 0.918 ns | 2.46% | 26.7853 M/s     |
+| Vector — BinarySearch           | 40.8 ns      | 40.8 ns        | 0.808 ns | 1.98% | 24.5172 M/s     |
+| Vector — BranchlessBinarySearch | 36.8 ns      | 36.8 ns        | 0.749 ns | 2.03% | 27.1633 M/s     |
+| **Slab — LinearSearch**         | **26.2 ns**  | **26.1 ns**    | 0.522 ns | 1.99% | **38.1475 M/s** |
+| Slab — BinarySearch             | 30.0 ns      | 29.9 ns        | 0.579 ns | 1.93% | 33.3805 M/s     |
+| Slab — BranchlessBinarySearch   | 26.9 ns      | 26.8 ns        | 0.588 ns | 2.18% | 37.1463 M/s     |
 
 ## Analysis
 
@@ -863,4 +891,84 @@ This is the larger of the two hops, 11.2 ns saved versus 3.2 ns for the containe
 
 ### Cumulative
 
-Map → Slab LinearSearch reduces mean latency from 40.6 ns to 26.2 ns (-35.5%) and raises throughput from 24.6081 M/s to 38.1475 M/s (+55.0%). 
+Map → Slab LinearSearch reduces mean latency from 40.6 ns to 26.2 ns (-35.5%) and raises throughput from 24.6081 M/s to 38.1475 M/s (+55.0%).
+
+# Log 6: Fix SPSC fifo multi-threaded benchmark (git tag: v6-correct-multithreaded-benchmark)
+
+## What changed:
+
+- changed fifo default size to be used from 65536 to 131072
+- Corrected benchmark shape to accurately capture true performance of our SPSC Fifo
+
+## Comparison of Benchmark Shape (Before vs After)
+Previous Shape:
+```cpp
+static void BM_Fifo_Throughput(benchmark::State &state) {
+  pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
+  QueueItem out{};
+
+  for (auto _ : state) {
+    if (state.thread_index() == 0) {
+      while (!fifo.push(payload))
+        ;
+    } else if (state.thread_index() == 1) {
+      while (!fifo.pop(out))
+        ;
+      benchmark::DoNotOptimize(out);
+    }
+  }
+  state.SetItemsProcessed(state.iterations()/2);
+}
+```
+Our previous benchmark shape falsely 
+
+
+```c++
+template <typename Fifo>
+static void RunOnePass(benchmark::State &state, Fifo &fifo) {
+  std::atomic<bool> keep_running{true};
+  std::atomic<int64_t> consumed_count{0};
+
+  std::jthread consumer([&]() {
+    pinThread(kConsumerCpu);
+
+    QueueItem out{};
+
+    while (keep_running || !fifo.empty()) {
+      while (fifo.pop(out)) {
+        benchmark::DoNotOptimize(out);
+        consumed_count.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+  });
+
+  // producer runs on main benchmark thread
+  pinThread(kProducerCpu);
+  int64_t produced_count = 0;
+
+  for (auto _ : state) {
+    QueueItem qItem{1, 1, 1, 1, OrderType::Add, Side::Bid};
+    while (!fifo.push(qItem)) {
+      benchmark::ClobberMemory();
+    }
+    produced_count++;
+  }
+
+  keep_running = false;
+  consumer.join();
+  if (produced_count != consumed_count.load()) {
+    state.SkipWithError("Data loss: produced count != consumed count");
+    return;
+  }
+  state.SetItemsProcessed(produced_count);
+}
+```
+
+
+## Snapshot
+
+```bash
+
+
+
+```

@@ -1,6 +1,7 @@
 #include "feed_handler.h"
 #include <benchmark/benchmark.h>
 #include <cstdint>
+#include "bm_helper.h"
 
 static size_t CountFeedCalls() {
   Feed_Handler counter;
@@ -35,4 +36,5 @@ static void BM_FeedHandler_Throughput(benchmark::State &state) {
   state.SetItemsProcessed(state.iterations());
 }
 
-BENCHMARK(BM_FeedHandler_Throughput)->Iterations(kFeedCalls);
+BENCHMARK(BM_FeedHandler_Throughput)
+    ->Iterations(kFeedCalls);

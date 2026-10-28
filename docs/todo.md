@@ -31,6 +31,9 @@
 - [x] pin each thread with `pthread_setaffinity_np`
 
 # Cleanup
-- [ ] p99/p99.9
 - [x] Hardware section on README
 - [x] Architecture diagram on README
+
+
+- [ ] p99/p99.9 for Orderbook
+- [ ] correct SPSC fifo benchmark

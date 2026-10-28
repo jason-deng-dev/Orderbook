@@ -901,8 +901,13 @@ Map → Slab LinearSearch reduces mean latency from 40.6 ns to 26.2 ns (-35.5%) 
 - Corrected benchmark shape to accurately capture true performance of our SPSC Fifo
 
 ## Comparison of Benchmark Shape (Before vs After)
-Previous Shape:
+
+**Previous Benchmark Shape:**
+
 ```cpp
+SpscFifo<QueueItem> fifo{};
+QueueItem payload{};
+
 static void BM_Fifo_Throughput(benchmark::State &state) {
   pinThread(state.thread_index() == 0 ? kProducerCpu : kConsumerCpu);
   QueueItem out{};
@@ -919,51 +924,65 @@ static void BM_Fifo_Throughput(benchmark::State &state) {
   }
   state.SetItemsProcessed(state.iterations()/2);
 }
-```
-Our previous benchmark shape falsely 
 
+BENCHMARK(BM_Fifo_Throughput)->Threads(2)->Iterations(100'000'000)->UseRealTime();
+```
+
+Issues:
+
+1. No per-thread CPU pinning
+   `taskset -c 2,4` only restricts the process
+
+**New Benchmark Shape**
 
 ```c++
-template <typename Fifo>
-static void RunOnePass(benchmark::State &state, Fifo &fifo) {
-  std::atomic<bool> keep_running{true};
-  std::atomic<int64_t> consumed_count{0};
+constexpr int kProducerCpu = 2;
+constexpr int kConsumerCpu = 4;
+template <template <typename> class Fifo>
+void BM_Fifo(benchmark::State &state) {
+  constexpr size_t fifoSize = 131072;
+  Fifo<QueueItem> fifo(fifoSize);
 
-  std::jthread consumer([&]() {
+  std::atomic<bool> keepRunning{true};
+  std::int64_t consumed = 0;
+
+  auto consumer = std::jthread([&] {
     pinThread(kConsumerCpu);
-
-    QueueItem out{};
-
-    while (keep_running || !fifo.empty()) {
-      while (fifo.pop(out)) {
-        benchmark::DoNotOptimize(out);
-        consumed_count.fetch_add(1, std::memory_order_relaxed);
+    QueueItem val;
+    for (;;) {
+      while (fifo.pop(val)) {
+        benchmark::DoNotOptimize(val);
+        ++consumed;
+      }
+      if (not keepRunning.load(std::memory_order_relaxed)) {
+        break;
       }
     }
   });
 
-  // producer runs on main benchmark thread
   pinThread(kProducerCpu);
-  int64_t produced_count = 0;
 
+  std::int64_t produced = 0;
+  QueueItem value{};
   for (auto _ : state) {
-    QueueItem qItem{1, 1, 1, 1, OrderType::Add, Side::Bid};
-    while (!fifo.push(qItem)) {
-      benchmark::ClobberMemory();
+    while (not fifo.push(value)) {
+      ;
     }
-    produced_count++;
+    ++produced;
   }
 
-  keep_running = false;
+  state.PauseTiming();
+  keepRunning.store(false, std::memory_order_relaxed);
   consumer.join();
-  if (produced_count != consumed_count.load()) {
-    state.SkipWithError("Data loss: produced count != consumed count");
+
+  if (produced != consumed) {
+    state.SkipWithError("data loss: produced != consumed");
     return;
   }
-  state.SetItemsProcessed(produced_count);
+
+  state.counters["ops/sec"] = benchmark::Counter(double(produced), benchmark::Counter::kIsRate);
 }
 ```
-
 
 ## Snapshot
 
